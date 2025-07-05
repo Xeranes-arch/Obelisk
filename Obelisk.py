@@ -1,4 +1,5 @@
 import copy
+import time
 
 
 GROUND = "."
@@ -7,7 +8,9 @@ WALL = "#"
 ICE = "□"
 TELEPORT = "T"
 WIN = "W"
-FIELD_TYPES = [PIT, WALL, ICE, TELEPORT, WIN]
+BUTTON = "B"
+GATE = "G"
+FIELD_TYPES = [PIT, WALL, ICE, TELEPORT, WIN, BUTTON, GATE]
 
 
 class Player:
@@ -51,6 +54,8 @@ class Board:
         for i in players:
             self.set_element(i.position, i.repr)
 
+        self.button = False  # True for button is pressed
+
     def display(self):
         """Prints board"""
         print("\n")
@@ -87,6 +92,37 @@ class Board:
         row, col = self.wrap(position)
         self.set_element(position, self.initial_grid[row][col])
 
+    def update(self, current_player: Player, old_pos, new_pos=None):
+        # Set old player position back to neutral
+        self.reset(old_pos)
+        # Set new player position
+        if new_pos:
+            self.set_element(new_pos, current_player.repr)
+
+        # Check for players on gates
+        player_pos_list = [i.position for i in self.players]
+        gate_list = self.find_element(GATE, self.initial_grid)
+        free_gates = []
+        for i in gate_list:
+            if i not in player_pos_list:
+                free_gates.append(i)
+
+        # Set gates
+        if self.button:
+            for i in free_gates:
+                self.set_element(i, GROUND)
+        else:
+            for i in gate_list:
+                self.set_element(i, GATE)
+                if i in player_pos_list:
+                    self.display()
+                    print(
+                        f"{self.players[player_pos_list.index(i)]} got squashed by a GATE!\n________________"
+                    )
+                    main()
+
+        self.display()
+
 
 def prompt_move(player: Player):
     """Gets next move."""
@@ -113,13 +149,16 @@ def prompt_move(player: Player):
 
 def make_move(board: Board, current_player: Player, move):
     """Executes move on board."""
+    # Store old position
+    old_pos = current_player.position
+
     # Calculate new position
     new_pos = tuple(a + b for a, b in zip(move, current_player.position))
 
     # Wrap new position back into board
     new_pos = board.wrap(new_pos)
 
-    # Required lists for events
+    # Reused lists for events
     lst_of_player_pos = [i.position for i in board.players]
     list_of_tps = board.find_element(TELEPORT)
 
@@ -136,61 +175,83 @@ def make_move(board: Board, current_player: Player, move):
             make_move(board, collision_player, move_P2)
         except RecursionError:
             print("Infinite player collision chain. Hell yea!")
+            main()
 
     # wall collision case
-    elif new_pos in board.find_element(WALL):
+    elif new_pos in board.find_element(WALL) or new_pos in board.find_element(GATE):
         ### TODO maybe make this a kick back mechanic to allow two movement in oposite direction
-        pass
+
+        new_pos = old_pos
+        board.update(current_player, old_pos, new_pos)
 
     # pit case
     elif new_pos in board.find_element(PIT):
-        # Set old player position back to neutral
-        board.reset(current_player.position)
+
         # Delete Player
         current_player.destroy(board)
 
-        print(f"\nOh no! {current_player} died!")
+        # Death message
+        print(f"\nOh no! {current_player} died!\n____________________\n")
+
+        # Show one more time
+        board.update(current_player, old_pos)
+        main()
 
     # Ice case
     elif new_pos in board.find_element(ICE) and new_pos != current_player.position:
-        # Set old player position back to neutral
-        board.reset(current_player.position)
 
         move_again = tuple(-(a - b) for a, b in zip(current_player.position, new_pos))
 
         # Set new player position
         current_player.position = new_pos
 
-        # Show new Player position on board
-        board.set_element(current_player.position, current_player.repr)
+        # Update board
+        board.update(current_player, old_pos, new_pos)
+        time.sleep(0.3)
 
         # Make the new move because of ice
         try:
             make_move(board, current_player, move_again)
         except RecursionError:
             print("Infinite ice slide. Hell yea!")
-            exit()
+            main()
 
     # Teleport case
     elif new_pos in list_of_tps:
-        # Set old player position back to neutral
-        board.reset(current_player.position)
 
         list_of_tps.pop(list_of_tps.index(new_pos))
         new_pos = list_of_tps[0]
-        board.set_element(new_pos, current_player.repr)
         current_player.position = new_pos
+
+        #####
+        board.set_element(new_pos, current_player.repr)
+
+    # Button case
+    elif new_pos in board.find_element(BUTTON):
+        current_player.position = new_pos
+        board.button = True
+        board.update(current_player, old_pos, new_pos)
 
     # Neutral case
     else:
-        # Set old player position back to neutral
-        board.reset(current_player.position)
-
         # Move player
         current_player.position = new_pos
 
-        # Show new Player position on board
-        board.set_element(current_player.position, current_player.repr)
+        # Update
+        board.update(current_player, old_pos, new_pos)
+
+    if old_pos in board.find_element(BUTTON, board.initial_grid) and old_pos != new_pos:
+        board.button = False
+        board.update(current_player, old_pos, new_pos)
+
+    # any(
+    #     i.position in board.find_element(BUTTON, board.initial_grid)
+    #     for i in board.players
+    # ):
+    #     print("SOMEONE ON A BUTTON")
+    #     #####
+    #     for gate_pos in board.find_element(GATE, board.initial_grid):
+    #         board.set_element(gate_pos, GROUND)
 
     # Win case: all player positions match positions of win on initial board
     if [i.position for i in board.players] == board.find_element(
@@ -216,6 +277,10 @@ def level0():
 
     win_list = [(6, 1), (6, 6)]
 
+    button_list = []
+
+    gate_list = []
+
     # lodtfp
     list_of_diff_type_field_positions = [
         pit_list,
@@ -223,6 +288,42 @@ def level0():
         ice_list,
         teleport_list,
         win_list,
+        button_list,
+        gate_list,
+    ]
+
+    start_pos = [(0, 3), (4, 5)]
+    names = ["Alice", "Bob"]
+    return list_of_diff_type_field_positions, width, hight, start_pos, names
+
+
+def level1():
+    width = 8
+    hight = 8
+
+    pit_list = []
+
+    wall_list = []
+
+    ice_list = []
+
+    teleport_list = []
+
+    win_list = [(6, 1), (6, 6)]
+
+    button_list = []
+
+    gate_list = []
+
+    # lodtfp
+    list_of_diff_type_field_positions = [
+        pit_list,
+        wall_list,
+        ice_list,
+        teleport_list,
+        win_list,
+        button_list,
+        gate_list,
     ]
 
     start_pos = [(0, 3), (4, 5)]
@@ -245,6 +346,10 @@ def level2():
 
     win_list = [(6, 1), (6, 6)]
 
+    button_list = []
+
+    gate_list = []
+
     # lodtfp
     list_of_diff_type_field_positions = [
         pit_list,
@@ -252,6 +357,8 @@ def level2():
         ice_list,
         teleport_list,
         win_list,
+        button_list,
+        gate_list,
     ]
 
     start_pos = [(0, 3), (4, 5)]
@@ -268,19 +375,25 @@ def level3():
     pit_to_wall = [(1, 4), (8, 6), (7, 8), (3, 10)]
 
     pit_list = [(i, 2 * n) for i in range(10) for n in range(6)]
-    [pit_list.remove(i) for i in pit_to_ice]
-    [pit_list.remove(i) for i in pit_to_wall]
+    for i in pit_to_ice:
+        pit_list.remove(i)
+    for i in pit_to_wall:
+        pit_list.remove(i)
     pit_list.remove((8, 10))
 
-    wall_list = []
-    [wall_list.append(i) for i in pit_to_wall]
+    wall_list = [i for i in pit_to_wall]
 
     ice_list = [(i, 2 * n + 1) for i in range(10) for n in range(5)]
-    [ice_list.append(i) for i in pit_to_ice]
+    for i in pit_to_ice:
+        ice_list.append(i)
 
     teleport_list = []
 
     win_list = [(8, 10), (10, 10)]
+
+    button_list = []
+
+    gate_list = []
 
     # lodtfp
     list_of_diff_type_field_positions = [
@@ -289,6 +402,8 @@ def level3():
         ice_list,
         teleport_list,
         win_list,
+        button_list,
+        gate_list,
     ]
     names = ["Alice", "Bob"]
     start_pos = [(9, 1), (10, 1)]
@@ -310,33 +425,9 @@ def level4():
 
     win_list = [(1, 1), (2, 3)]
 
-    # lodtfp
-    list_of_diff_type_field_positions = [
-        pit_list,
-        wall_list,
-        ice_list,
-        teleport_list,
-        win_list,
-    ]
+    button_list = [(3, 5)]
 
-    start_pos = [(0, 3), (4, 5)]
-    names = ["Alice", "Bob"]
-    return list_of_diff_type_field_positions, width, hight, start_pos, names
-
-
-def level1():
-    width = 8
-    hight = 8
-
-    pit_list = []
-
-    wall_list = []
-
-    ice_list = []
-
-    teleport_list = []
-
-    win_list = [(6, 1), (6, 6)]
+    gate_list = [(0, 4)]
 
     # lodtfp
     list_of_diff_type_field_positions = [
@@ -345,6 +436,8 @@ def level1():
         ice_list,
         teleport_list,
         win_list,
+        button_list,
+        gate_list,
     ]
 
     start_pos = [(0, 3), (4, 5)]
@@ -364,12 +457,8 @@ def main():
     B = Board(Ps, lodtfp, width, hight)
     B.display()
 
+    # Play
     while True:
-        # Detect if everyone is dead
-        if not len(B.players):
-            print("EVERYONE IS DEAD AAAAAAAAAAAAAAAAAAA")
-            exit()
-
         for current_player in B.players[:]:
             for _ in range(1):
                 # Start of a turn
@@ -377,7 +466,6 @@ def main():
                     break
                 move = prompt_move(current_player)
                 make_move(B, current_player, move)
-                B.display()
 
 
 if __name__ == "__main__":
