@@ -1,6 +1,10 @@
 import copy
 import time
+import sys
+import tty
+import termios
 
+LINE = "\n_________________________"
 
 GROUND = "."
 PIT = "x"
@@ -11,6 +15,11 @@ WIN = "W"
 BUTTON = "B"
 GATE = "G"
 FIELD_TYPES = [PIT, WALL, ICE, TELEPORT, WIN, BUTTON, GATE]
+
+PLAYER1_INPUTS = ["w", "a", "s", "d"]
+PLAYER2_INPUTS = ["i", "j", "k", "l"]
+
+PLAYER_INPUTS = [PLAYER1_INPUTS, PLAYER2_INPUTS]
 
 
 class Player:
@@ -92,9 +101,10 @@ class Board:
         row, col = self.wrap(position)
         self.set_element(position, self.initial_grid[row][col])
 
-    def update(self, current_player: Player, old_pos, new_pos=None):
+    def update(self, current_player: Player = None, old_pos=None, new_pos=None):
         # Set old player position back to neutral
-        self.reset(old_pos)
+        if old_pos:
+            self.reset(old_pos)
         # Set new player position
         if new_pos:
             self.set_element(new_pos, current_player.repr)
@@ -117,38 +127,75 @@ class Board:
                 if i in player_pos_list:
                     self.display()
                     print(
-                        f"{self.players[player_pos_list.index(i)]} got squashed by a GATE!\n________________"
+                        f"{self.players[player_pos_list.index(i)]} got squashed by a GATE!",
+                        LINE,
                     )
-                    main()
+                    return "died"
 
         self.display()
 
 
-def prompt_move(player: Player):
-    """Gets next move."""
-    # Prompt
-    print(f"{player}, pick a move (wasd):")
-    # Try to get a valid move and translate to coordinates
+def get_key():
+    """Read a single keypress from stdin and return it."""
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        ch = sys.stdin.read(1)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+
+def prompt_move():
     while True:
-        move = False
-        read_move = input()
-        if read_move == "":
-            move = (0, 0)
-        if read_move == "w":
-            move = (-1, 0)
-        elif read_move == "a":
-            move = (0, -1)
-        elif read_move == "s":
-            move = (1, 0)
-        elif read_move == "d":
-            move = (0, 1)
-        if move:
-            break
-    return move
+        key = get_key()
+        for j, i in enumerate(PLAYER_INPUTS):
+            if key == i[0]:
+                move = (-1, 0)
+            elif key == i[1]:
+                move = (0, -1)
+            elif key == i[2]:
+                move = (1, 0)
+            elif key == i[3]:
+                move = (0, 1)
+            elif key == "\x1b":
+                print("Exiting.", LINE)
+                return None, "Q"
+            if key in i:
+                current_player_idx = j
+        return current_player_idx, move
 
 
-def make_move(board: Board, current_player: Player, move):
+# def prompt_move(player: Player):
+#     """Gets next move."""
+#     # Prompt
+#     print(f"{player}, pick a move (wasd):")
+#     # Try to get a valid move and translate to coordinates
+#     while True:
+#         move = False
+#         read_move = input()
+#         if read_move == "":
+#             move = (0, 0)
+#         if read_move == "w":
+#             move = (-1, 0)
+#         elif read_move == "a":
+#             move = (0, -1)
+#         elif read_move == "s":
+#             move = (1, 0)
+#         elif read_move == "d":
+#             move = (0, 1)
+#         if move:
+#             break
+#     return move
+
+
+def make_move(board: Board, current_player: Player, move, recursion_depth=0):
     """Executes move on board."""
+
+    # Recursion counter to regulate end of turn effects
+    recursion_depth += 1
+
     # Store old position
     old_pos = current_player.position
 
@@ -172,10 +219,10 @@ def make_move(board: Board, current_player: Player, move):
             -(a - b) for a, b in zip(current_player.position, collision_player.position)
         )
         try:
-            make_move(board, collision_player, move_P2)
+            make_move(board, collision_player, move_P2, recursion_depth)
         except RecursionError:
             print("Infinite player collision chain. Hell yea!")
-            main()
+            return "collision_chain"
 
     # wall collision case
     elif new_pos in board.find_element(WALL) or new_pos in board.find_element(GATE):
@@ -191,11 +238,11 @@ def make_move(board: Board, current_player: Player, move):
         current_player.destroy(board)
 
         # Death message
-        print(f"\nOh no! {current_player} died!\n____________________\n")
+        print(f"\nOh no! {current_player} died!", LINE)
 
         # Show one more time
         board.update(current_player, old_pos)
-        main()
+        return "died"
 
     # Ice case
     elif new_pos in board.find_element(ICE) and new_pos != current_player.position:
@@ -211,25 +258,29 @@ def make_move(board: Board, current_player: Player, move):
 
         # Make the new move because of ice
         try:
-            make_move(board, current_player, move_again)
+            make_move(board, current_player, move_again, recursion_depth)
         except RecursionError:
             print("Infinite ice slide. Hell yea!")
-            main()
+            return "ice slide"
 
     # Teleport case
     elif new_pos in list_of_tps:
+        try:
+            list_of_tps.pop(list_of_tps.index(new_pos))
+            new_pos = list_of_tps[0]
 
-        list_of_tps.pop(list_of_tps.index(new_pos))
-        new_pos = list_of_tps[0]
-        current_player.position = new_pos
+        except:
+            print("Teleporter doesn't know what to do...\nTeleporter sad :(")
 
         #####
-        board.set_element(new_pos, current_player.repr)
+        current_player.position = new_pos
+        board.update(current_player, old_pos, new_pos)
 
     # Button case
     elif new_pos in board.find_element(BUTTON):
         current_player.position = new_pos
         board.button = True
+        print("GATE opened!", LINE)
         board.update(current_player, old_pos, new_pos)
 
     # Neutral case
@@ -240,26 +291,28 @@ def make_move(board: Board, current_player: Player, move):
         # Update
         board.update(current_player, old_pos, new_pos)
 
-    if old_pos in board.find_element(BUTTON, board.initial_grid) and old_pos != new_pos:
-        board.button = False
-        board.update(current_player, old_pos, new_pos)
+    recursion_depth -= 1
+    # End of turn effects
+    if not recursion_depth:
 
-    # any(
-    #     i.position in board.find_element(BUTTON, board.initial_grid)
-    #     for i in board.players
-    # ):
-    #     print("SOMEONE ON A BUTTON")
-    #     #####
-    #     for gate_pos in board.find_element(GATE, board.initial_grid):
-    #         board.set_element(gate_pos, GROUND)
+        # Check whether anyone still on button
+        if board.button:
+            flag = False
+            for i in board.players:
+                if i.position in board.find_element(BUTTON, board.initial_grid):
+                    flag = True
+            if not flag:
+                board.button = False
+                print("GATE closed!", LINE)
+                board.update()
 
-    # Win case: all player positions match positions of win on initial board
-    if [i.position for i in board.players] == board.find_element(
-        WIN, board.initial_grid
+    # Win case
+    if sorted([i.position for i in board.players]) == sorted(
+        board.find_element(WIN, board.initial_grid)
     ):
         board.display()
-        print("WIN!!!\n_________________________")
-        main()
+        print("WIN!!!", LINE)
+        return "W"
 
 
 def level0():
@@ -267,19 +320,19 @@ def level0():
     width = 8
     hight = 8
 
-    pit_list = []
+    pit_list = [(4, 5)]
 
-    wall_list = []
+    wall_list = [(5, 7)]
 
-    ice_list = []
+    ice_list = [(i, 6) for i in range(1, 5)]
 
-    teleport_list = []
+    teleport_list = [(5, 4), (1, 4)]
 
-    win_list = [(6, 1), (6, 6)]
+    win_list = [(7, 5), (6, 6)]
 
-    button_list = []
+    button_list = [(0, 6)]
 
-    gate_list = []
+    gate_list = [(6, 5)]
 
     # lodtfp
     list_of_diff_type_field_positions = [
@@ -292,7 +345,7 @@ def level0():
         gate_list,
     ]
 
-    start_pos = [(0, 3), (4, 5)]
+    start_pos = [(5, 5), (5, 6)]
     names = ["Alice", "Bob"]
     return list_of_diff_type_field_positions, width, hight, start_pos, names
 
@@ -445,10 +498,23 @@ def level4():
     return list_of_diff_type_field_positions, width, hight, start_pos, names
 
 
-def main():
+def main_menu(unlocked_levels):
     lv_list = [level0(), level1(), level2(), level3(), level4()]
-    print("Pick a level 0-4:")
-    lv = int(input())
+    while True:
+        try:
+            print("Pick a level:")
+            for i in range(unlocked_levels):
+                print(f"level{i+1}")
+            lv = input()
+            if lv == "":
+                lv = 0
+                break
+            elif int(lv) - 1 in range(unlocked_levels):
+                lv = int(lv)
+                break
+        except:
+            pass
+
     lodtfp, width, hight, start_pos, names = lv_list[lv]
 
     Ps = []
@@ -459,14 +525,27 @@ def main():
 
     # Play
     while True:
-        for current_player in B.players[:]:
-            for _ in range(1):
-                # Start of a turn
-                if current_player not in B.players:
-                    break
-                move = prompt_move(current_player)
-                make_move(B, current_player, move)
+        current_player_idx, move = prompt_move()
+        if move == "Q":
+            return False
+        current_player = B.players[current_player_idx]
+        exit_status = make_move(B, current_player, move)
+        if exit_status == "W" and lv == unlocked_levels:
+            return True
+        elif exit_status != None:
+            return False
+
+
+def main():
+    unlocked_levels = 1
+    while True:
+        unlock_next = main_menu(unlocked_levels)
+        if unlock_next:
+            unlocked_levels += 1
 
 
 if __name__ == "__main__":
     main()
+
+
+### TODO werid tp level where blocking one of three allows the remaining one to function
