@@ -1,0 +1,25 @@
+DnD style big party raid section
+
+All can move three tiles per turn
+All have 3hp
+
+Roles: Tank, DD, healer
+
+Tank:
+Protect self and up to 2 ppl next to them by sacrificing movement for this and next turn.
+
+DD:
+Attack for 1 point of damage in close range
+
+Healer: 
+
+Different attack phases by the Obelisk:
+- Create pits
+- Raise wall
+- Freeze ground
+
+- Burst (radius 3 around Obelisk)
+- Beam  (inf range, 60° cone)
+- Freeze (up to four individuals)
+
+- spawn tp tiles 
