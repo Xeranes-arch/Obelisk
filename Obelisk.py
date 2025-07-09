@@ -21,6 +21,11 @@ SWITCH = "S"
 GATE = "G"
 FIELD_TYPES = [PIT, WALL, ICE, TELEPORT, WIN, SWITCH, GATE]
 
+# Secrets
+LOOSE_ROCK = "+"
+ROCK = "R"
+
+
 # Player properties
 PLAYER_NAMES = ["Aelira", "Baelric"]
 PLAYER_REPRESENTATIONS = ["A", "B"]
@@ -39,10 +44,11 @@ GAME_FLAGS = {
 
 
 class Player:
-    def __init__(self, name, position=(0, 0), repr=None):
-        self.name = name
+    def __init__(self, position, name=None, repr=None):
+
         self.position = position
         self.repr = repr
+        self.name = name
 
         # Property for being on top of walls
         self.topside = False
@@ -54,14 +60,25 @@ class Player:
     def __str__(self):
         return f"{self.name}"
 
-    def destroy(self, board):
+    def kill(self, board):
         board.players.remove(self)
 
 
+class Rock:
+    def __init__(self, position):
+        self.repr = ROCK
+        self.position = position
+
+    def kill(self, board):
+        board.rocks.remove(self)
+
+
 class Board:
-    def __init__(self, players, lodtfp, width=10, hight=10):
+    def __init__(self, players, lodtfp, secret_list, width=10, hight=10):
         # List of players
         self.players = players
+        # List of rocks
+        self.rocks = []
 
         # Dimensions
         self.width = width
@@ -75,6 +92,13 @@ class Board:
             for k in lodtfp[i]:
                 self.set_element(k, j)
 
+        # Secret win
+        self.secret_win = secret_list[0]
+
+        # Set rock_spawners
+        self.rocks = []
+        self.rock_spawners = secret_list[1]
+
         # Independent copy of initial state
         self.initial_grid = copy.deepcopy(self.grid)
 
@@ -87,6 +111,13 @@ class Board:
             self.set_element(i.position, i.repr)
 
         self.switch = False  # True for switch is pressed
+
+    def spawn_rock(self, current_player, idx):
+        print(f"{current_player}, kicks loose a rock!")
+        rock_pos = self.rock_spawners[idx][1]
+        self.rock_spawners.pop(idx)
+        self.rocks.append(Rock(rock_pos))
+        self.set_element(rock_pos, ROCK)
 
     def display(self):
         """Prints board"""
@@ -122,8 +153,57 @@ class Board:
 
     def reset(self, position):
         """Reset a specific square back to initial value"""
-        row, col = self.wrap(position)
+        row, col = position
         self.set_element(position, self.initial_grid[row][col])
+
+    def update_gates(self):
+
+        player_pos_list = [i.position for i in self.players]
+        gate_list = self.find_element(GATE, self.initial_grid)
+
+        # Gates without players
+        free_gates = []
+        for i in gate_list:
+            if i not in player_pos_list:
+                free_gates.append(i)
+
+        for i in gate_list:
+
+            # Find player on gate if any
+            player_on_gate = None
+            if i in player_pos_list:
+                player_on_gate = self.players[player_pos_list.index(i)]
+
+            # Button pressed
+            if self.switch:
+
+                # Lower player to ground
+                if player_on_gate:
+                    player_on_gate.topside = False
+
+                # Set free gates to ground
+                if i in free_gates:
+                    self.set_element(i, GROUND)
+
+            # Button not pressed
+            else:
+                # Set free gates to Gate
+                if i in free_gates:
+                    self.set_element(i, GATE)
+
+                # Raise player onto gate if gates go up
+                if player_on_gate:
+                    if GAME_FLAGS["gates_go_up"]:
+                        player_on_gate.topside = True
+
+                    # Kill player if gates go down
+                    else:
+                        self.display()
+                        print(
+                            f"{player_on_gate} got squashed by a GATE!",
+                            LINE,
+                        )
+                        return "died"
 
     def update(self, current_player: Player = None, old_pos=None, new_pos=None):
         """Handle player-gate overlap??? Alter board state"""
@@ -155,7 +235,7 @@ class Board:
             if self.switch:
 
                 # Lower player to ground
-                if player_on_gate != None:
+                if player_on_gate:
                     player_on_gate.topside = False
 
                 # Set free gates to ground
@@ -169,7 +249,7 @@ class Board:
                     self.set_element(i, GATE)
 
                 # Raise player onto gate if gates go up
-                if player_on_gate != None:
+                if player_on_gate:
                     if GAME_FLAGS["gates_go_up"]:
                         player_on_gate.topside = True
 
@@ -233,20 +313,26 @@ def make_move(board: Board, current_player: Player, move, recursion_depth=0):
     new_pos = board.wrap(new_pos)
 
     # Reused lists for events
-    lst_of_player_pos = [i.position for i in board.players]
+    list_of_player_pos = [i.position for i in board.players]
     list_of_tps = board.find_element(TELEPORT)
+    list_of_rock_spawners = [i[0] for i in board.rock_spawners]
+
+    # Check rock spawn
+    if new_pos in list_of_rock_spawners:
+        idx = list_of_rock_spawners.index(new_pos)
+        board.spawn_rock(current_player, idx)
 
     # player collision case
-    if new_pos in lst_of_player_pos and new_pos != current_player.position:
+    if new_pos in list_of_player_pos and new_pos != current_player.position:
 
         # Find 2nd party
-        collision_player_idx = lst_of_player_pos.index(new_pos)
+        collision_player_idx = list_of_player_pos.index(new_pos)
         collision_player = board.players[collision_player_idx]
 
         # Squash case
         if current_player.topside and not collision_player.topside:
             # Delete Player
-            current_player.destroy(board)
+            current_player.kill(board)
 
             # Death message
             print(
@@ -313,7 +399,7 @@ def make_move(board: Board, current_player: Player, move, recursion_depth=0):
     elif new_pos in board.find_element(PIT, board.initial_grid):
         if not current_player.flying:
             # Delete Player
-            current_player.destroy(board)
+            current_player.kill(board)
 
             # Death message
             print(f"\nOh no! {current_player} died by falling in a pit!", LINE)
@@ -411,17 +497,24 @@ def make_move(board: Board, current_player: Player, move, recursion_depth=0):
         print("DONE!!!", LINE)
         return "W"
 
+    # Secret Win case
+    if sorted([i.position for i in board.players]) == sorted(board.secret_win):
+        print(
+            "The ground tiles Aelira and Baelric stand on click into place and a mechanism starts up."
+        )
+        return "SW"
 
-def main_menu(unlocked_levels, menu_skip):
+
+def main_menu(unlocked_levels, menu_skip, current_level):
     lv_list = [level0, level1, level2, level3, level4, level5]
 
     skip = True
     if skip:
-        lodtfp, width, hight, start_pos = lv_list[5]()
+        lodtfp, secret_list, width, hight, start_pos = lv_list[5]()
     else:
         if menu_skip:
-            lv = unlocked_levels
-            lodtfp, width, hight, start_pos = lv_list[lv]()
+            lv = current_level
+            lodtfp, secret_list, width, hight, start_pos = lv_list[lv]()
         else:
             while True:
                 try:
@@ -431,7 +524,7 @@ def main_menu(unlocked_levels, menu_skip):
                     lv = input()
                     if lv == "":
                         lv = 0
-                        lodtfp, width, hight, start_pos = lv_list[lv]()
+                        lodtfp, secret_list, width, hight, start_pos = lv_list[lv]()
                         break
                     elif int(lv) - 1 in range(unlocked_levels):
                         lv = int(lv)
@@ -442,8 +535,8 @@ def main_menu(unlocked_levels, menu_skip):
 
     Ps = []
     for i in range(len(PLAYER_NAMES)):
-        Ps.append(Player(PLAYER_NAMES[i], start_pos[i]))
-    B = Board(Ps, lodtfp, width, hight)
+        Ps.append(Player(start_pos[i], PLAYER_NAMES[i]))
+    B = Board(Ps, lodtfp, secret_list, width, hight)
     B.display()
 
     # Play
@@ -460,13 +553,27 @@ def main_menu(unlocked_levels, menu_skip):
 
         # Win case
         if exit_status == "W" and lv == unlocked_levels:
+            unlock = True
             menu_skip = True
-            return True, menu_skip
+            go_back = False
+            return unlock, menu_skip, go_back
+        # Secret win case
+        elif exit_status == "SW":
+            print(
+                "It's as if time runs backwards as the room reverts to the previous one."
+            )
+            unlock = False
+            menu_skip = True
+            go_back = True
+            return unlock, menu_skip, go_back
+            pass
         # Other cases
         elif exit_status != None:
             input("press enter to restart")
+            unlock = False
             menu_skip = True
-            return False, menu_skip
+            go_back = False
+            return unlock, menu_skip, go_back
 
 
 def main():
@@ -477,19 +584,26 @@ def main():
     # )
     # input("press enter to continue")
 
+    current_level = 1
     unlocked_levels = 1
     menu_skip = True
     while True:
-        unlock_next, menu_skip = main_menu(unlocked_levels, menu_skip)
+        unlock_next, menu_skip, go_back = main_menu(
+            unlocked_levels, menu_skip, current_level
+        )
         if unlock_next:
             unlocked_levels += 1
+            current_level += 1
+        if go_back:
+            current_level -= 1
 
 
 if __name__ == "__main__":
     main()
 
+### TODO ice slide into death doesnt prompt game end???
 
-### TODO what is up with Board.update containing the gate logic?
+### TODO what is up with Board.update containing the gate logic? well the point of it is to decide what to show and what not...
 
 ### TODO wouldn't it be better to split make move to a seperate document and into functions depending on the collision types?
 

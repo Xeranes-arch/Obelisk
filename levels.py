@@ -221,6 +221,9 @@ def level4():
 
 
 def level5():
+
+    # print("It looks only have complete with random elements strewn about.")
+
     width = 16
     hight = 15
 
@@ -267,5 +270,13 @@ def level5():
         gate_list,
     ]
 
+    swin_list = [(7, 7), (7, 8)]
+    loose_rock_list = [[(7, 12), (5, 12)], [(0, 0), (1, 1)]]
+    # secret list
+    secret_list = [swin_list, loose_rock_list]
+
     start_pos = [(0, 3), (4, 5)]
-    return list_of_diff_type_field_positions, width, hight, start_pos
+    return list_of_diff_type_field_positions, secret_list, width, hight, start_pos
+
+
+### Build last level without achievable WIN or even fake one, or one that grants the powerup but no win
