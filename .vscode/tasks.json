@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "run-my-script",
+      "type": "shell",
+      "command": "/bin/python3 /home/xeranes/Obelisk/Obelisk.py",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",          // don't reopen terminal
+        "panel": "shared",           // reuse the same terminal panel
+        "focus": true,              // don't steal focus
+        "clear": false               // keep previous output
+      
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"  // optional: makes sure the working dir is correct
+      }
+    },
+    {
+      "label": "say-hello",
+      "type": "shell",
+      "command": "echo Hello from VS Code task!",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -57,29 +57,29 @@ def get_key():
 
 def prompt_move():
     while True:
-        key = get_key()
-        for j, i in enumerate(PLAYER_INPUTS):
-            if key == i[0]:
-                move = (-1, 0)
-            elif key == i[1]:
-                move = (0, -1)
-            elif key == i[2]:
-                move = (1, 0)
-            elif key == i[3]:
-                move = (0, 1)
-            elif key == "\x1b":
-                print("Exiting.", LINE)
-                return None, "Q"
-            if key in i:
-                current_player_idx = j
-        return current_player_idx, move
+        try:
+            key = get_key()
+            for j, i in enumerate(PLAYER_INPUTS):
+                if key == i[0]:
+                    move = (-1, 0)
+                elif key == i[1]:
+                    move = (0, -1)
+                elif key == i[2]:
+                    move = (1, 0)
+                elif key == i[3]:
+                    move = (0, 1)
+                elif key == "\x1b":
+                    print("Exiting.", LINE)
+                    return None, "Q"
+                if key in i:
+                    current_player_idx = j
+            return current_player_idx, move
+        except:
+            exit()
 
 
 def make_move(board: Board, current_player: Player, move, recursion_depth=0):
     """Executes move on board."""
-
-    # Recursion counter to regulate end of turn effects
-    recursion_depth += 1
 
     # Store old position
     old_pos = current_player.position
@@ -92,7 +92,8 @@ def make_move(board: Board, current_player: Player, move, recursion_depth=0):
 
     # TODO Actual move handled by game objects
 
-    recursion_depth -= 1
+    other = board.get_collision_target(current_player, new_pos)
+    current_player.collide_with(other, board)
 
 
 def play(lv: Level, board: Board):
@@ -100,6 +101,7 @@ def play(lv: Level, board: Board):
     board.display()
     # Play
     while True:
+
         current_player_idx, move = prompt_move()
 
         # Quit to main
@@ -110,25 +112,28 @@ def play(lv: Level, board: Board):
         make_move(board, current_player, move)
 
         # End of turn effects
-        board.update_gates()
+        board.update_gates(GAME_FLAGS)
 
         # Win case
         if sorted([i.position for i in board.players]) == sorted(
-            board.find_element(WIN, board.initial_grid)
+            [i.position for i in board.wins]
         ):
             board.display()
             print("DONE!!!", LINE)
             return "W"
+        # # Secret Win case
+        # if sorted([i.position for i in board.players]) == sorted(board.secret_win):
+        #     print(
+        #         "The ground tiles Aelira and Baelric stand on click into place and a mechanism starts up."
+        #     )
+        #     return "SW"
 
-        # Secret Win case
-        if sorted([i.position for i in board.players]) == sorted(board.secret_win):
-            print(
-                "The ground tiles Aelira and Baelric stand on click into place and a mechanism starts up."
-            )
-            return "SW"
-
+        # Death case
+        if len(board.players) < 2:
+            board.display()
+            input("press enter to restart")
+            return "died"
         board.display()
-    return exit_status
 
 
 def main_menu(unlocked_levels):
@@ -173,7 +178,7 @@ def main():
             lv_idx = main_menu(unlocked_levels)
 
         # Start level
-        lv: Level = Level_classes[lv_idx]()
+        lv: Level = Level_classes[lv_idx](GAME_FLAGS)
         lv.on_enter()
         board = lv.setup_board()
         exit_status = play(lv, board)
@@ -183,6 +188,8 @@ def main():
             lv_idx += 1
             menu_skip = True
 
+        if exit_status == "Q":
+            menu_skip = False
         # if go_back:
         #     current_level -= 1
         # Ps = []
@@ -221,3 +228,5 @@ if __name__ == "__main__":
 
 
 ### Kick rebound enables pulling another onto ice maybe
+
+### TODO wall kick off switch over pit onto gate

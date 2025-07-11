@@ -10,18 +10,15 @@ PLAYER_REPRESENTATIONS = ["A", "B"]
 
 
 class Level:
-    def __init__(self, start_pos):
+    def __init__(self, start_pos, flags):
         self.start_pos = start_pos
+        self.flags = flags
 
-    def setup(self, board):
-        """Place objects, set up the board. Override in subclasses."""
-        pass
-
-    def on_enter(self, board):
+    def on_enter(self):
         """Show dialogue or perform actions when the level starts."""
         pass
 
-    def on_event(self, board, event):
+    def on_event(self):
         """React to custom events during gameplay (optional)."""
         pass
 
@@ -29,8 +26,8 @@ class Level:
 class Level0(Level):
 
     # Flexibile start position for return levels
-    def __init__(self, start_pos=[(5, 5), (5, 6)]):
-        super().__init__(start_pos)
+    def __init__(self, flags, start_pos=[(5, 5), (5, 6)]):
+        super().__init__(start_pos, flags)
 
     def on_enter(self):
         """Run start up sequence/dialgue."""
@@ -45,11 +42,12 @@ class Level0(Level):
         width = 8
         hight = 8
 
-        pit_list = [(4, 5)]
+        # Grounds
+        pit_list = [(4, 5),(6,2)]
         ice_list = [(i, 6) for i in range(1, 5)]
         teleporter_list = [(5, 4), (1, 4)]
         win_list = [(7, 5), (6, 6)]
-        switch_list = [(0, 6)]
+        switch_list = [(0, 6),(7,2)]
         tiles = [
             pit_list,
             ice_list,
@@ -58,11 +56,20 @@ class Level0(Level):
             win_list,
         ]
 
-        wall_list = [(5, 7)]
-        gate_list = [(6, 5)]
+        # Middles
+        player_list = []
+        rock_list = [(1,3),(2,3),(3,2)]
+        wall_list = [(5, 7),(0,2),(1,5)]
+        gate_list = [(6, 5),(1,2),(0,4),(0,5),(2,2),(5,2)]
+        middles = [player_list, rock_list, wall_list, gate_list]
 
+        # Tops
+        rock_spawner_list = [[(5, 7), (1, 1)]]
+        tops = [rock_spawner_list]
         # TODO put in boaord init
-        self.board = Board(width, hight, tiles)
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+
+        # Set players
         for i, pos in enumerate(self.start_pos):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
@@ -70,246 +77,264 @@ class Level0(Level):
         return self.board
 
 
-def level1():
-    i = 0
-    lst = ["", "*correctly*"]
-    while True:
+class Level1(Level):
+    def __init__(self, flags):
+        super().__init__([(1, 2), (4, 3)], flags)
+
+    def on_enter(self, board=None):
+        i = 0
+        lst = ["", "*correctly*"]
+        while True:
+            print(
+                LINE,
+                f"\nBefore they proceed, Aelira and Baelric must {lst[i]} answer a riddle.\nWhat should every Hitchhiker be sure to bring?\na - A towel\nb - A beloved friend",
+                LINE,
+            )
+            if input() == "a":
+                print("Correct!", LINE)
+                break
+            else:
+                print("No! WRONG! INCORRECT!!!")
+                i = 1
+
         print(
-            LINE,
-            f"\nBefore they proceed, Aelira and Baelric must {lst[i]} answer a riddle.\nWhat should every Hitchhiker be sure to bring?\na - A towel\nb - A beloved friend",
-            LINE,
+            "\nAelira and Baelric figure out they can move around with wasd and ijkl respectively (ESC for back to main menu).\nWhat might be the thing they have to do?"
         )
-        if input() == "a":
-            print("Correct!", LINE)
-            break
-        else:
-            print("No! WRONG! INCORRECT!!!")
-            i = 1
 
-    print(
-        "\nAelira and Baelric figure out they can move around with wasd and ijkl respectively (ESC for back to main menu).\nWhat might be the thing they have to do?"
-    )
+    def setup_board(self):
+        width, hight = 8, 8
 
-    width = 8
-    hight = 8
+        pit_list = []
+        ice_list = []
+        teleporter_list = []
+        switch_list = []
+        win_list = [(6, 1), (6, 6)]
 
-    pit_list = []
+        wall_list = [
+            (i, j) for i in range(8) for j in range(8) if i in [0, 7] or j in [0, 7]
+        ]
+        gate_list = []
 
-    wall_list = []
-    for i in range(8):
-        wall_list.append((0, i))
-        wall_list.append((7, i))
-        wall_list.append((i, 0))
-        wall_list.append((i, 7))
+        player_list = []
+        rock_list = []
 
-    ice_list = []
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [[]]
 
-    teleporter_list = []
-
-    win_list = [(6, 1), (6, 6)]
-
-    switch_list = []
-
-    gate_list = []
-
-    # lodtfp
-    list_of_diff_type_field_positions = [
-        pit_list,
-        wall_list,
-        ice_list,
-        teleporter_list,
-        win_list,
-        switch_list,
-        gate_list,
-    ]
-
-    start_pos = [(1, 2), (4, 3)]
-    return list_of_diff_type_field_positions, width, hight, start_pos
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board
 
 
-def level2():
-    while True:
+class Level2(Level):
+    def __init__(self, flags):
+        super().__init__([(6, 1), (6, 6)], flags)
+
+    def on_enter(self, board=None):
+        while True:
+            print(
+                LINE,
+                "\nBefore they proceed, Aelira and Baelric must again answer a riddle.\nWhat is the objectively superior condiment?\na - Ketchup\nb - Mayonaise",
+                LINE,
+            )
+            if input() == "b":
+                print("Correct!", LINE)
+                break
+            else:
+                print("No! WRONG! INCORRECT!!!")
+
         print(
-            LINE,
-            "\nBefore they proceed, Aelira and Baelric must again answer a riddle.\nWhat is the objectively superior condiment?\na - Ketchup\nb - Mayonaise",
-            LINE,
+            "\nSuddenly the walls fall away.\nIn their place appear identical rooms with identical Aeliras and Baelrics.\nWtf"
         )
-        if input() == "b":
-            print("Correct!", LINE)
-            break
-        else:
-            print("No! WRONG! INCORRECT!!!")
 
-    print(
-        "\nSuddenly the walls fall away.\nIn their place appear identical rooms with identical Aeliras and Baelrics.\nWtf"
-    )
+    def setup_board(self):
+        width, hight = 8, 8
 
-    width = 8
-    hight = 8
+        pit_list = []
+        ice_list = []
+        teleporter_list = []
+        switch_list = []
+        win_list = [(2, 2), (2, 5)]
 
-    pit_list = []
+        wall_list = [(4, i) for i in range(8)]
+        gate_list = []
 
-    wall_list = [(4, i) for i in range(8)]
+        player_list = []
+        rock_list = []
 
-    ice_list = []
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [[]]
 
-    teleporter_list = []
-
-    win_list = [(2, 2), (2, 5)]
-
-    switch_list = []
-
-    gate_list = []
-
-    # lodtfp
-    list_of_diff_type_field_positions = [
-        pit_list,
-        wall_list,
-        ice_list,
-        teleporter_list,
-        win_list,
-        switch_list,
-        gate_list,
-    ]
-
-    start_pos = [(6, 1), (6, 6)]
-    return list_of_diff_type_field_positions, width, hight, start_pos
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board
 
 
-def level3():
+class Level3(Level):
+    def __init__(self, flags):
+        super().__init__([(9, 1), (10, 1)], flags)
 
-    width = 11
-    hight = 11
+    def setup_board(self):
+        width, hight = 11, 11
 
-    pit_to_ice = [(1, 2), (8, 4), (7, 6), (3, 8)]
-    pit_to_wall = [(1, 4), (8, 6), (7, 8), (3, 10)]
+        pit_to_ice = [(1, 2), (8, 4), (7, 6), (3, 8)]
+        pit_to_wall = [(1, 4), (8, 6), (7, 8), (3, 10)]
 
-    pit_list = [(i, 2 * n) for i in range(10) for n in range(6)]
-    for i in pit_to_ice:
-        pit_list.remove(i)
-    for i in pit_to_wall:
-        pit_list.remove(i)
-    pit_list.remove((8, 10))
+        pit_list = [(i, 2 * n) for i in range(10) for n in range(6)]
+        for p in pit_to_ice + pit_to_wall + [(8, 10)]:
+            if p in pit_list:
+                pit_list.remove(p)
 
-    wall_list = [i for i in pit_to_wall]
+        wall_list = pit_to_wall[:]
+        ice_list = [(i, 2 * n + 1) for i in range(10) for n in range(5)] + pit_to_ice
 
-    ice_list = [(i, 2 * n + 1) for i in range(10) for n in range(5)]
-    for i in pit_to_ice:
-        ice_list.append(i)
+        teleporter_list = []
+        switch_list = []
+        gate_list = []
+        win_list = [(8, 10), (10, 10)]
 
-    teleporter_list = []
+        player_list = []
+        rock_list = []
 
-    win_list = [(8, 10), (10, 10)]
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [[]]
 
-    switch_list = []
-
-    gate_list = []
-
-    # lodtfp
-    list_of_diff_type_field_positions = [
-        pit_list,
-        wall_list,
-        ice_list,
-        teleporter_list,
-        win_list,
-        switch_list,
-        gate_list,
-    ]
-    start_pos = [(9, 1), (10, 1)]
-    return list_of_diff_type_field_positions, width, hight, start_pos
-
-
-def level4():
-
-    width = 7
-    hight = 5
-
-    pit_list = [(1, 3), (1, 4), (1, 5), (2, 5)]
-
-    wall_list = [(2, 0), (1, 0), (2, 2), (3, 3), (0, 1), (1, 2), (3, 1), (0, 2)]
-
-    ice_list = [(4, i) for i in range(6)]
-
-    teleporter_list = [(3, 2), (2, 1)]
-
-    win_list = [(1, 1), (2, 3)]
-
-    switch_list = [(3, 5)]
-
-    gate_list = [(0, 4)]
-
-    # lodtfp
-    list_of_diff_type_field_positions = [
-        pit_list,
-        wall_list,
-        ice_list,
-        teleporter_list,
-        win_list,
-        switch_list,
-        gate_list,
-    ]
-
-    start_pos = [(0, 3), (4, 5)]
-    return list_of_diff_type_field_positions, width, hight, start_pos
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board
 
 
-def level5():
+class Level4(Level):
+    def __init__(self, flags):
+        super().__init__([(0, 3), (4, 5)], flags)
 
-    # print("It looks only have complete with random elements strewn about.")
+    def setup_board(self):
+        width, hight = 7, 5
 
-    width = 16
-    hight = 15
+        pit_list = [(1, 3), (1, 4), (1, 5), (2, 5)]
+        wall_list = [(2, 0), (1, 0), (2, 2), (3, 3), (0, 1), (1, 2), (3, 1), (0, 2)]
+        ice_list = [(4, i) for i in range(6)]
+        teleporter_list = [(3, 2), (2, 1)]
+        switch_list = [(3, 5)]
+        gate_list = [(0, 4)]
+        win_list = [(1, 1), (2, 3)]
 
-    pit_list = [(0, 10), (14, 10)]
-    for i in range(6, 9):
-        pit_list.append((6, i))
-        pit_list.append((8, i))
-        pit_list.append((i, 6))
-        pit_list.append((i, 9))
+        player_list = []
+        rock_list = []
 
-    wall_list = []
-    for i in range(6):
-        wall_list.append((7, i))
-        wall_list.append((7, i + 11))
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [[]]
 
-    wall_list.append((2, 11))
-    wall_list.append((2, 14))
-
-    ice_list = [(i, 10) for i in range(1, 14)]
-    ice_list.append((5, 14))
-
-    ice_list.append((2, 9))
-    ice_list.append((2, 8))
-    ice_list.append((2, 7))
-
-    teleporter_list = [(7, 7)]
-
-    teleporter_list.append((2, 13))
-
-    win_list = []
-
-    switch_list = [(4, 6)]
-
-    gate_list = [(8, 14), (6, 1)]
-
-    # lodtfp
-    list_of_diff_type_field_positions = [
-        pit_list,
-        wall_list,
-        ice_list,
-        teleporter_list,
-        win_list,
-        switch_list,
-        gate_list,
-    ]
-
-    swin_list = [(7, 7), (7, 8)]
-    loose_rock_list = [[(7, 12), (5, 12)], [(0, 0), (1, 1)]]
-    # secret list
-    secret_list = [swin_list, loose_rock_list]
-
-    start_pos = [(0, 3), (4, 5)]
-    return list_of_diff_type_field_positions, secret_list, width, hight, start_pos
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board
 
 
-### Build last level without achievable WIN or even fake one, or one that grants the powerup but no win
+class Level5(Level):
+    def __init__(self, flags):
+        super().__init__([(0, 3), (4, 5)], flags)
+
+    def setup_board(self):
+        width, hight = 16, 15
+
+        pit_list = [(0, 10), (14, 10)] + [
+            (i, j) for i in range(6, 9) for j in [6, 7, 8, 9]
+        ]
+        wall_list = (
+            [(7, i) for i in range(6)]
+            + [(7, i + 11) for i in range(6)]
+            + [(2, 11), (2, 14)]
+        )
+        ice_list = [(i, 10) for i in range(1, 14)] + [(5, 14), (2, 9), (2, 8), (2, 7)]
+        teleporter_list = [(7, 7), (2, 13)]
+        switch_list = [(4, 6)]
+        gate_list = [(8, 14), (6, 1)]
+        win_list = []
+
+        player_list = []
+        rock_list = [
+            [(7, 12), (5, 12)],
+            [(0, 0), (1, 1)],
+        ]
+
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [[[(7, 7), (7, 8)]]]
+
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board

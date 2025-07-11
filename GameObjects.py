@@ -1,4 +1,5 @@
 import copy
+import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,6 +22,39 @@ class GameObject:
     def collide_with_rock(self, other, board: "Board"):
         pass
 
+    def find_layer(self, board):
+        if self.topside:
+            layer = board.top
+            initial_layer = board.initial_top
+        else:
+            layer = board.middle
+            initial_layer = board.initial_top
+        return layer, initial_layer
+    
+    def push(self,other):
+        push_direction = (
+            self.position[0] - other.position[0],
+            self.position[1] - other.position[1],
+        )
+        new_self_pos = (
+            self.position[0] + push_direction[0],
+            self.position[1] + push_direction[1],
+        )
+        return new_self_pos, push_direction
+    
+    def move(self, other, board, target_layer=False):
+        # Find default target layer
+        if not target_layer:
+            target_layer = board.middle
+
+        layer, ini = other.find_layer(board)
+        # Reset old
+        board.reset(layer, other.position, ini)
+        # Set pos
+        other.position = copy.deepcopy(self.position)
+        # Set on board
+        board.set_element(target_layer, other.position, other)
+        # board.display()
 
 ### Ground level
 
@@ -31,8 +65,12 @@ class Ground(GameObject):
         self.repr = "."
 
     def collide_with_player(self, other, board: "Board"):
-        other.position = copy.deepcopy(self.position)
-        board.set_element(board.middle, other.position, other)
+        self.move(other, board)
+        other.topside = False
+
+    def collide_with_rock(self, other, board):
+        self.move(other, board)
+        other.topside = False
 
 
 class Pit(GameObject):
@@ -41,8 +79,14 @@ class Pit(GameObject):
         self.repr = "x"
 
     def collide_with_player(self, other, board: "Board"):
-        print(f"Oh no {other} has fallen into a pit and died!", LINE)
-        other.kill(board)
+        if other.flying:
+            self.move(other,board)
+        else:
+            print(f"Oh no {other} has fallen into a pit and died!", LINE)
+            other.kill(board)
+
+    def collide_with_rock(self, other, board: "Board"):
+        other.remove(board)
 
 
 class Ice(GameObject):
@@ -51,10 +95,43 @@ class Ice(GameObject):
         self.repr = "□"
 
     def collide_with_player(self, other, board: "Board"):
-        pass
+
+        # Move after
+        move_again = (
+            self.position[0] - other.position[0],
+            self.position[1] - other.position[1],
+        )
+
+        # Main move
+        self.move(other, board)
+        board.display()
+        time.sleep(0.3)
+        other.topside = False
+
+        # Next move
+        new_pos = tuple(a + b for a, b in zip(move_again, other.position))
+        new_pos = board.wrap(new_pos)
+        obj = board.get_collision_target(other, new_pos)
+        other.collide_with(obj, board)
 
     def collide_with_rock(self, other, board: "Board"):
-        return super().collide_with_rock(other, board)
+        other.topside = False
+        # Move after
+        move_again = (
+            self.position[0] - other.position[0],
+            self.position[1] - other.position[1],
+        )
+
+        # Main move
+        self.move(other, board)
+        board.display()
+        time.sleep(0.3)
+
+        # Next move
+        new_pos = tuple(a + b for a, b in zip(move_again, other.position))
+        new_pos = board.wrap(new_pos)
+        obj = board.get_collision_target(other, new_pos)
+        other.collide_with(obj, board)
 
 
 class Teleporter(GameObject):
@@ -63,10 +140,19 @@ class Teleporter(GameObject):
         self.repr = "T"
 
     def collide_with_player(self, other, board: "Board"):
-        return super().collide_with_player(other, board)
+        if len(board.free_teleporters) == 2:
+            board.free_teleporters.remove(self)
+            new_pos = board.free_teleporters[0].position
+            board.reset(board.middle, other.position, board.initial_middle)
+            other.position = new_pos
+            board.set_element(board.middle, new_pos, other)
+        else:
+            self.move(other, board)
+        other.topside = False
 
     def collide_with_rock(self, other, board: "Board"):
-        return super().collide_with_rock(other, board)
+        self.move(other, board)
+        other.topside = False
 
 
 class Switch(GameObject):
@@ -75,10 +161,12 @@ class Switch(GameObject):
         self.repr = "S"
 
     def collide_with_player(self, other, board: "Board"):
-        return super().collide_with_player(other, board)
+        self.move(other, board)
+        other.topside = False
 
     def collide_with_rock(self, other, board: "Board"):
-        return super().collide_with_rock(other, board)
+        self.move(other, board)
+        other.topside = False
 
 
 class Win(GameObject):
@@ -87,10 +175,12 @@ class Win(GameObject):
         self.repr = "W"
 
     def collide_with_player(self, other, board: "Board"):
-        return super().collide_with_player(other, board)
+        self.move(other, board)
+        other.topside = False
 
     def collide_with_rock(self, other, board: "Board"):
-        return super().collide_with_rock(other, board)
+        self.move(other, board)
+        other.topside = False
 
 
 ### Middle level
@@ -108,78 +198,84 @@ class Player(GameObject):
         self.topside = False
         # Property after kicking off walls, avoids ice and pits
         self.flying = False
-        # Specifically to handle landing in walls after a kick and sliding down onto a field
-        self.landing = False
 
     def __str__(self):
         return f"{self.name}"
 
     def kill(self, board: "Board"):
+        # Criterion for game end
         board.players.remove(self)
 
+        # Reset space
+        layer, ini = self.find_layer(board)
+        board.reset(layer, self.position, ini)
+
     def collide_with(self, other, board: "Board"):
+        board.update_teleporters()
         return other.collide_with_player(self, board)
 
     def collide_with_player(self, other, board: "Board"):
-        # Try to push the player in the direction the other player is moving
-        push_direction = (
-            self.position[0] - other.position[0],
-            self.position[1] - other.position[1],
-        )
-        new_rock_pos = (
-            self.position[0] + push_direction[0],
-            self.position[1] + push_direction[1],
-        )
-        obj = board.get_element(board.middle, new_rock_pos)
-        obj.collide_with(self, board)
+        if other.topside and not self.topside:
+            print(f"{self} got squashed by {other} and died!", LINE)
+            self.kill(board)
+            self.move(other,board)
+            return 
+
+        # Next push
+        new_self_pos, _ = self.push(other)
+        partyB = board.get_collision_target(self, new_self_pos)
+        self.collide_with(partyB, board)
 
     def collide_with_rock(self, other, board: "Board"):
-
-        push_direction = (
-            self.position[0] - other.position[0],
-            self.position[1] - other.position[1],
-        )
-        new_rock_pos = (
-            self.position[0] + push_direction[0],
-            self.position[1] + push_direction[1],
-        )
-        obj = board.get_element(board.middle, new_rock_pos)
-        obj.collide_with(self, board)
+        if other.topside and not self.topside:
+            print(f"{self} got squashed by {other} and died!", LINE)
+            self.kill(board)
+            self.move(other,board)
+            return
+        
+        # Next push
+        new_self_pos, _ = self.push(other)
+        partyB = board.get_collision_target(self, new_self_pos)
+        self.collide_with(partyB, board)
 
 
 class Rock(GameObject):
     def __init__(self, position):
         super().__init__(position)
         self.repr = "R"
+        self.topside = False
+
+    def __str__(self):
+        return "a rock"
 
     def collide_with(self, other, board: "Board"):
+        board.update_teleporters()
         return other.collide_with_rock(self, board)
 
+    def remove(self, board: "Board"):
+        board.rocks.remove(self)
+
+        layer, ini = self.find_layer(board)
+        board.reset(layer, self.position, ini)
+
     def collide_with_player(self, other, board: "Board"):
-        # Try to push the rock in the direction the player is moving
-        push_direction = (
-            self.position[0] - other.position[0],
-            self.position[1] - other.position[1],
-        )
-        new_rock_pos = (
-            self.position[0] + push_direction[0],
-            self.position[1] + push_direction[1],
-        )
-        obj = board.get_element(board.middle, new_rock_pos)
-        obj.collide_with(self, board)
+        # Rocks are walkable
+        if other.topside and not self.topside:
+            self.move(other, board,board.top)
+        else:
+            # Next push
+            new_self_pos, _ = self.push(other)
+            partyB = board.get_collision_target(self, new_self_pos)
+            self.collide_with(partyB, board)
 
     def collide_with_rock(self, other, board: "Board"):
-
-        push_direction = (
-            self.position[0] - other.position[0],
-            self.position[1] - other.position[1],
-        )
-        new_rock_pos = (
-            self.position[0] + push_direction[0],
-            self.position[1] + push_direction[1],
-        )
-        obj = board.get_element(board.middle, new_rock_pos)
-        obj.collide_with(self, board)
+        if other.topside and not self.topside:
+            self.move(other, board,board.top)
+        else:
+            # Next push
+            new_self_pos, _ = self.push(other)
+            partyB = board.get_collision_target(self, new_self_pos)
+            self.collide_with(partyB, board)
 
 
 class Wall(GameObject):
@@ -188,10 +284,27 @@ class Wall(GameObject):
         self.repr = "#"
 
     def collide_with_player(self, other, board: "Board"):
-        pass
+        if other.topside:
+            self.move(other, board,board.top)
+        else:
+            _, push_dir = self.push(other)
+            push_dir = [-1 * i for i in push_dir]
+            other.flying = True
+            for i in range(2):
+                new_pos = (
+                other.position[0] + push_dir[0],
+                other.position[1] + push_dir[1],
+            )
+                partyB = board.get_collision_target(other,new_pos)
+                if not isinstance(partyB, Wall):
+                    other.collide_with(partyB, board)
+                    board.display()
+                    time.sleep(0.3)
+                    other.flying = False
 
     def collide_with_rock(self, other, board: "Board"):
-        pass
+        if other.topside:
+            self.move(other, board,board.top)
 
 
 class Gate(GameObject):
@@ -202,10 +315,17 @@ class Gate(GameObject):
 
     def collide_with_player(self, other, board: "Board"):
         if self.is_active:
-            pass
+            if other.topside:
+                self.move(other, board,board.top)
         else:
-            other.position = copy.deepcopy(self.position)
-            board.set_element(board.middle, other.position, other)
+            self.move(other, board)
+
+    def collide_with_rock(self, other, board):
+        if self.is_active:
+            if other.topside:
+                self.move(other, board,board.top)
+        else:
+            self.move(other, board)
 
 
 ### Top level
