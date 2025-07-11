@@ -1,5 +1,3 @@
-import copy
-import time
 import sys
 import tty
 import inspect
@@ -11,8 +9,7 @@ from Board import Board
 from GameObjects import *
 
 # Constants
-DELAY = 0.3
-LINE = "\n_________________________"
+LINE = "\n_________________________\n"
 
 # Field type representations
 GROUND = "."
@@ -37,9 +34,9 @@ PLAYER_INPUTS = [PLAYER1_INPUTS, PLAYER2_INPUTS]
 
 # Power ups that change mechanics
 GAME_FLAGS = {
-    "gates_go_up": True,
+    "gates_go_up": False,
     "rocks_spawn": False,
-    "wall_kick": True,
+    "wall_kick": False,
 }
 
 
@@ -75,7 +72,7 @@ def prompt_move():
                     current_player_idx = j
             return current_player_idx, move
         except:
-            exit()
+            pass
 
 
 def make_move(board: Board, current_player: Player, move, recursion_depth=0):
@@ -90,13 +87,12 @@ def make_move(board: Board, current_player: Player, move, recursion_depth=0):
     # Wrap new position back into board
     new_pos = board.wrap(new_pos)
 
-    # TODO Actual move handled by game objects
-
+    # Actual move handled by game objects
     other = board.get_collision_target(current_player, new_pos)
     current_player.collide_with(other, board)
 
 
-def play(lv: Level, board: Board):
+def play(lv: Level, board: Board, lv_idx):
 
     board.display()
     # Play
@@ -106,6 +102,8 @@ def play(lv: Level, board: Board):
 
         # Quit to main
         if move == "Q":
+            board.flags["gates_go_up"] = False 
+            board.flags["wall_kick"] = False 
             return move
 
         current_player = board.players[current_player_idx]
@@ -113,6 +111,7 @@ def play(lv: Level, board: Board):
 
         # End of turn effects
         board.update_gates(GAME_FLAGS)
+        board.pit_check()
 
         # Win case
         if sorted([i.position for i in board.players]) == sorted(
@@ -120,16 +119,25 @@ def play(lv: Level, board: Board):
         ):
             board.display()
             print("DONE!!!", LINE)
-            return "W"
-        # # Secret Win case
-        # if sorted([i.position for i in board.players]) == sorted(board.secret_win):
-        #     print(
-        #         "The ground tiles Aelira and Baelric stand on click into place and a mechanism starts up."
-        #     )
-        #     return "SW"
+            lv.end()
+            if lv_idx == 6:
+                for i in board.wins:
+                    board.flags["gates_go_up"] = True 
+                    board.flags["wall_kick"] = True 
+                    board.set_element(board.ground, i.position, Ground(i.position))
+                    board.spawn_rocks()
+                board.wins=[]
+            else:
+                return "W"
+            
+        # Secret Win case
+        if sorted([i.position for i in board.players]) == sorted([(7,7),(7,8)]):
+            print(LINE,LINE,"\nYOU'VE DONE IT!!!\nThe entire system shuts down and the archway of darkness opens up again.\nOutside, the Obelisk falls silent at last.")
 
         # Death case
         if len(board.players) < 2:
+            board.flags["gates_go_up"] = False 
+            board.flags["wall_kick"] = False 
             board.display()
             input("press enter to restart")
             return "died"
@@ -154,12 +162,6 @@ def main_menu(unlocked_levels):
 
 
 def main():
-    # print(
-    #     LINE,
-    #     "\nAelira and Baelric on the run from the Obelisk, step through the stone archway covered by darkness and find themselves in an empty square stone room. The archway slams shut behind them!\nTheir companions are still fighting the Obelisk so the Heroes better hurry to figure out how to disable it!",
-    #     LINE,
-    # )
-    # input("press enter to continue")
 
     Level_classes = [
         cls
@@ -168,8 +170,9 @@ def main():
     ]
     Level_classes.pop(0)
 
-    lv_idx = 0
+    lv_idx = 1
     unlocked_levels = 1
+
     menu_skip = True
 
     while True:
@@ -181,7 +184,7 @@ def main():
         lv: Level = Level_classes[lv_idx](GAME_FLAGS)
         lv.on_enter()
         board = lv.setup_board()
-        exit_status = play(lv, board)
+        exit_status = play(lv, board,lv_idx)
 
         if exit_status == "W" and lv_idx == unlocked_levels:
             unlocked_levels += 1
@@ -190,38 +193,13 @@ def main():
 
         if exit_status == "Q":
             menu_skip = False
-        # if go_back:
-        #     current_level -= 1
-        # Ps = []
-    for i in range(len(PLAYER_NAMES)):
-        Ps.append(Player(start_pos[i], PLAYER_NAMES[i]))
-    B = Board(Ps, lodtfp, secret_list, width, hight)
-    B.display()
 
-    exit_status = play()
-    if exit_status == "W" and current_level == lv:
-        return (True,)
-
-
-# B = Board()
-# P1 = Player((0, 0), name="Alice", repr="A")
-# B.set_element(B.ground, P1.position, P1)
-# B.display()
+        if exit_status == "died":
+            menu_skip = True
 
 if __name__ == "__main__":
     main()
 
-### TODO ice slide into death doesnt prompt game end???
-
-### TODO what is up with Board.update containing the gate logic? well the point of it is to decide what to show and what not...
-
-### TODO wouldn't it be better to split make move to a seperate document and into functions depending on the collision types?
-
-### TODO werid tp level where blocking one of three allows the remaining one to function
-
-### TODO make levels run different with gates being able to be ridden onto walls
-
-### able to kick hidden rock loose when stepping onto wall segment falls to place x and is pushable like player
 
 ### use to press button and let both into a section
 ### block tp to allow function

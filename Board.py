@@ -20,6 +20,7 @@ class Board:
         self.free_teleporters = []
         self.wins = []
 
+        self.rocks_to_be_spawned = []
         # Dimensions
         self.width = width
         self.hight = hight
@@ -51,17 +52,20 @@ class Board:
 
         # Set middle layer
         for middle_type, obj in zip(middles, MIDDLE_OBJECTS):
-            for pos in middle_type:
-                temp = obj(pos)
-                self.set_element(self.middle, pos, temp)
+            if not obj == Rock or self.flags["rocks_spawn"]:
+                for pos in middle_type:
+                    temp = obj(pos)
+                    self.set_element(self.middle, pos, temp)
 
-                # Track players, gates, rocks
-                if obj == Player:
-                    self.players.append(temp)
-                elif obj == Gate:
-                    self.gates.append(temp)
-                elif obj == Rock:
-                    self.rocks.append(temp)
+                    # Track players, gates, rocks
+                    if obj == Player:
+                        self.players.append(temp)
+                    elif obj == Gate:
+                        self.gates.append(temp)
+                    elif obj == Rock:
+                        self.rocks.append(temp)
+            else:
+                self.rocks_to_be_spawned = middle_type
 
         # Set top layer
         for top_type, obj in zip(tops, TOP_OBJECTS):
@@ -103,13 +107,11 @@ class Board:
 
     def get_collision_target(self, partyA, new_pos):
         stack = self.get_stack(new_pos)
-        print(stack)
         if not partyA.topside:
             stack.pop(0)
         for obj in stack:
             if obj == None:
                 continue
-            print(obj)
             return obj
 
     def display(self):
@@ -125,27 +127,14 @@ class Board:
             print(" ".join(row))
         print("\n")
 
-    # def spawn_rock(self, current_player, idx):
-    #     print(f"{current_player}, kicks loose a rock!")
-    #     rock_pos = self.rock_spawners[idx][1]
-    #     self.rock_spawners.pop(idx)
-    #     self.rocks.append(Rock(rock_pos))
-    #     self.set_element(rock_pos, ROCK)
+    def spawn_rocks(self):
+        for pos in self.rocks_to_be_spawned:
+            self.set_element(self.middle, pos, Rock(pos))
+            self.rocks.append(self.get_element(self.middle,pos))
 
     def wrap(self, position):
         """Board specific folding of coordinates"""
         return (position[0] % self.hight, position[1] % self.width)
-
-    # def find_element(self, repr, grid=None):
-    #     """Find positions of elements on grid"""
-    #     if not grid:
-    #         grid = self.grid
-    #     found_positions = []
-    #     for i, row in enumerate(grid):
-    #         for j, val in enumerate(row):
-    #             if val == repr:
-    #                 found_positions.append((i, j))
-    #     return found_positions
 
     def reset(self, layer, position, initial):
         """Reset a specific square back to initial value"""
@@ -170,7 +159,13 @@ class Board:
         self.free_teleporters = [
             tp for tp in self.teleporters if tp.position in free_t_pos
         ]
-
+    def pit_check(self):
+        for p in self.players:
+            tile = self.get_element(self.ground, p.position)
+            if isinstance(tile, Pit):
+                print(LINE,f"\nOh no {p} has fallen into a pit and died!", LINE)
+                p.kill(self)
+                
     def update_gates(self, flags):
         players_pos = [i.position for i in self.players]
         gates_pos = [i.position for i in self.gates]
@@ -189,33 +184,37 @@ class Board:
             if i not in moveables_pos:
                 free_gates_pos.append(i)
 
+
+        # Switch pressed
+            if any(ppos in switches_pos for ppos in moveables_pos):
+                self.switch = True
+        # Switch not pressed
+            else:
+                self.switch = False
+
+
         for gate in self.gates:
             
             # Find moveable on gate if any
             moveable_on_gate = None
             if gate.position in moveables_pos:
                 moveable_on_gate = moveables[moveables_pos.index(gate.position)]
+                # print(moveable_on_gate)
 
 
-            # Switch pressed
-            if any(ppos in switches_pos for ppos in players_pos):
-                print("Switch pressed")
-                self.switch = True
+            if self.switch:
                 gate.is_active = False
 
-                # Lower player to middle
-                if moveable_on_gate:
-                    moveable_on_gate.topside = False
-                    self.set_element(self.middle, moveable_on_gate.position, moveable_on_gate)
-                    self.reset(self.top, moveable_on_gate.position, self.initial_top)
+                # Remove gate from middle
+                middle_element = self.get_element(self.middle, gate.position)
+                top_element = self.get_element(self.top, gate.position)
+                if isinstance(middle_element, Gate):
+                    if isinstance(top_element, Player) or isinstance(top_element, Rock):
+                        top_element.topside = False
+                    self.set_element(self.middle,gate.position,top_element)
+                    self.reset(self.top, gate.position, self.initial_top)
 
-                # Remove gates from middle
-                if gate.position in free_gates_pos:
-                    self.set_element(self.middle,gate.position,None)
-
-            # Switch not pressed
-            else:
-                self.switch = False
+            if not self.switch:
                 gate.is_active = True
 
                 # Raise moveable onto gate if gates go up
@@ -231,8 +230,8 @@ class Board:
                     else:
                         if isinstance(moveable_on_gate,Player): 
                             self.display()
-                            print(
-                                f"{moveable_on_gate} got squashed by a GATE!",
+                            print(LINE,
+                                f"\n{moveable_on_gate} got squashed by a GATE!",
                                 LINE,
                             )
                             moveable_on_gate.kill(self)

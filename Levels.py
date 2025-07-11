@@ -2,7 +2,7 @@ from Board import Board
 from GameObjects import *
 
 
-LINE = "\n_________________________"
+LINE = "\n_________________________\n"
 
 # Player properties
 PLAYER_NAMES = ["Aelira", "Baelric"]
@@ -21,6 +21,17 @@ class Level:
     def on_event(self):
         """React to custom events during gameplay (optional)."""
         pass
+
+    def end(self):
+        pass
+
+    def laser(self):
+        print(LINE, "\nA laser completely incinerates Aelira and Baelric!", LINE)
+        self.enter()
+
+    def enter(self):
+        print(LINE)
+        input("press enter to continue")
 
 
 class Level0(Level):
@@ -43,11 +54,11 @@ class Level0(Level):
         hight = 8
 
         # Grounds
-        pit_list = [(4, 5),(6,2)]
+        pit_list = [(4, 5), (6, 2)]
         ice_list = [(i, 6) for i in range(1, 5)]
         teleporter_list = [(5, 4), (1, 4)]
         win_list = [(7, 5), (6, 6)]
-        switch_list = [(0, 6),(7,2)]
+        switch_list = [(0, 6), (7, 2)]
         tiles = [
             pit_list,
             ice_list,
@@ -58,9 +69,9 @@ class Level0(Level):
 
         # Middles
         player_list = []
-        rock_list = [(1,3),(2,3),(3,2)]
-        wall_list = [(5, 7),(0,2),(1,5)]
-        gate_list = [(6, 5),(1,2),(0,4),(0,5),(2,2),(5,2)]
+        rock_list = [(1, 3), (2, 3), (3, 2)]
+        wall_list = [(5, 7), (0, 2), (1, 5)]
+        gate_list = [(6, 5), (1, 2), (0, 4), (0, 5), (2, 2), (5, 2)]
         middles = [player_list, rock_list, wall_list, gate_list]
 
         # Tops
@@ -79,9 +90,10 @@ class Level0(Level):
 
 class Level1(Level):
     def __init__(self, flags):
-        super().__init__([(1, 2), (4, 3)], flags)
+        super().__init__([(1, 2), (2, 4)], flags)
 
-    def on_enter(self, board=None):
+    def end(self):
+        # Riddle 1
         i = 0
         lst = ["", "*correctly*"]
         while True:
@@ -95,11 +107,23 @@ class Level1(Level):
                 break
             else:
                 print("No! WRONG! INCORRECT!!!")
+                self.laser()
                 i = 1
 
+    def on_enter(self, board=None):
+        # Game intro
         print(
-            "\nAelira and Baelric figure out they can move around with wasd and ijkl respectively (ESC for back to main menu).\nWhat might be the thing they have to do?"
+            LINE,
+            "\nAelira and Baelric on the run from the Obelisk, step through the stone archway covered by darkness and find themselves in an empty square stone room. The archway slams shut behind them!\nTheir companions are still fighting the Obelisk so the Heroes better hurry to figure out how to disable it!",
+            LINE,
         )
+        self.enter()
+
+        # Only game instructions
+        print(
+            "\nAelira and Baelric figure out they can move around with\nwasd and ijkl respectively (ESC for back to main menu).\nWhat might be the thing they have to do?"
+        )
+        self.enter()
 
     def setup_board(self):
         width, hight = 8, 8
@@ -146,10 +170,18 @@ class Level2(Level):
         super().__init__([(6, 1), (6, 6)], flags)
 
     def on_enter(self, board=None):
+
+        print(
+            "\nSuddenly the room comes alive and completely restructures itself. Some of the ground and all the walls fall away.\nIn place of the Walls appear identical rooms with identical Aeliras and Baelrics.\nWtf"
+        )
+        self.enter()
+
+    def end(self):
+        # Riddle 2
         while True:
             print(
                 LINE,
-                "\nBefore they proceed, Aelira and Baelric must again answer a riddle.\nWhat is the objectively superior condiment?\na - Ketchup\nb - Mayonaise",
+                "\nBefore they proceed, Aelira and Baelric must\nagain answer a riddle.\nWhat is the objectively superior condiment?\na - Ketchup\nb - Mayonaise",
                 LINE,
             )
             if input() == "b":
@@ -157,21 +189,18 @@ class Level2(Level):
                 break
             else:
                 print("No! WRONG! INCORRECT!!!")
-
-        print(
-            "\nSuddenly the walls fall away.\nIn their place appear identical rooms with identical Aeliras and Baelrics.\nWtf"
-        )
+                self.laser()
 
     def setup_board(self):
         width, hight = 8, 8
 
-        pit_list = []
+        pit_list = [(4, i) for i in range(8)]
         ice_list = []
         teleporter_list = []
         switch_list = []
         win_list = [(2, 2), (2, 5)]
 
-        wall_list = [(4, i) for i in range(8)]
+        wall_list = []
         gate_list = []
 
         player_list = []
@@ -201,8 +230,111 @@ class Level2(Level):
 
 
 class Level3(Level):
+    """Pits and Ice"""
+
+    # Flexibile start position for return levels
+    def __init__(self, flags, start_pos=[(2, 2), (2, 5)]):
+        super().__init__(start_pos, flags)
+
+    def on_enter(self, board=None):
+
+        print("\nParts of the ground freeze over and next to Aelira a Switch appears.")
+        self.enter()
+
+    def end(self):
+        # Riddle 3
+        while True:
+            print(
+                LINE,
+                "\nBefore they proceed, Aelira and Baelric must\nagain answer a riddle.\nDoes pineapple belong on Pizza?\na - Yes\nb - No",
+                LINE,
+            )
+            if input() == "a":
+                print("Correct!", LINE)
+                break
+            else:
+                print(
+                    "Only those weak of mind close themselves off from greatness.\nHarharhar!"
+                )
+                self.laser()
+
+    def check_for_events(self, board):
+        """Check for level specific events like powerups or first time learn effect dialouge"""
+        pass
+
+    def setup_board(self):
+        width, hight = 8, 8
+
+        pit_list = [(2, 0), (3, 0), (6, 0), (5, 0), (5, 7)] + [
+            (j, i) for i in range(2, 6) for j in [0, 1, 3, 5, 7]
+        ]
+        wall_list = [(0, 1), (0, 0), (1, 0), (4, 0), (5, 1), (7, 7), (0, 6)] + [
+            (i, 7) for i in range(4)
+        ]
+        ice_list = (
+            [(i, 1) for i in range(2, 5)]
+            + [(4, i) for i in range(2, 7)]
+            + [(7, 6)]
+            + [(6, i) for i in range(2, 7)]
+        )
+        teleporter_list = []
+        switch_list = [(1, 1), (7, 0)]
+        gate_list = [(5, 6), (4, 7)]
+        win_list = [(6, 1), (7, 1)]
+
+        player_list = []
+        rock_list = []
+
+        rock_spawner_list = []
+
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [rock_spawner_list]
+
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board
+
+
+class Level4(Level):
     def __init__(self, flags):
         super().__init__([(9, 1), (10, 1)], flags)
+
+    def end(self):
+        # Riddle 4
+        for i in ["cereal", "a smoothy", "a salad", "everything"]:
+            if i == "everything":
+                j = "bucket"
+            else:
+                j = "soup"
+            while True:
+                print(
+                    LINE,
+                    f"\nBefore they proceed, Aelira and Baelric must\nagain answer a riddle.\nIs {i} a {j}?\na - Yes\nb - No",
+                    LINE,
+                )
+                if input() == "a":
+                    print("Correct!", LINE)
+                    break
+                else:
+                    print(
+                        "Only those weak of mind close themselves off from greatness.\nHarharhar!"
+                    )
+                    self.laser()
 
     def setup_board(self):
         width, hight = 11, 11
@@ -249,9 +381,25 @@ class Level3(Level):
         return self.board
 
 
-class Level4(Level):
+class Level5(Level):
     def __init__(self, flags):
-        super().__init__([(0, 3), (4, 5)], flags)
+        super().__init__([(3, 6), (4, 6)], flags)
+
+    def end(self):
+        # Riddle 5
+        i = 0
+        print(LINE, "\nBefre the prosed, Aevnoa and Baelric must\nagin b rid.")
+        while True:
+            print(
+                "Why oövicah sa jk HREeAAN?\n----.---\nbael##+Ǵ",
+                LINE,
+            )
+            input()
+            if i == 1:
+                break
+            else:
+                print("The Obe#### i# ### ##er")
+                i += 1
 
     def setup_board(self):
         width, hight = 7, 5
@@ -260,8 +408,8 @@ class Level4(Level):
         wall_list = [(2, 0), (1, 0), (2, 2), (3, 3), (0, 1), (1, 2), (3, 1), (0, 2)]
         ice_list = [(4, i) for i in range(6)]
         teleporter_list = [(3, 2), (2, 1)]
-        switch_list = [(3, 5)]
-        gate_list = [(0, 4)]
+        switch_list = [(0, 3)]
+        gate_list = [(3, 5)]
         win_list = [(1, 1), (2, 3)]
 
         player_list = []
@@ -290,32 +438,75 @@ class Level4(Level):
         return self.board
 
 
-class Level5(Level):
+class Level6(Level):
     def __init__(self, flags):
-        super().__init__([(0, 3), (4, 5)], flags)
+        super().__init__([(0, 3), (4, 4)], flags)
+    def end(self):
+        print(LINE, "\nThe entire Dungeon starts shaking. Is it done?\nCracks form all over the room and chunks fall from it. The Gates start malfunctioning and start raising from the ground to shut passages instead of coming down from the ceiling.\n A siren blares: NO PASSAGE PRotednfvk the hiden swi ELIMINATE THe the island in the center KILL THE INTRUDERS. \nAmidst this chaos a faint glow envelops the heroes to protect them from the rubble. The blessing coalesces into their boot enabeling them to wall jump.\nThe shaking dies down but nothing else happens...",LINE)
+        self.enter()
 
     def setup_board(self):
         width, hight = 16, 15
 
-        pit_list = [(0, 10), (14, 10)] + [
-            (i, j) for i in range(6, 9) for j in [6, 7, 8, 9]
-        ]
-        wall_list = (
-            [(7, i) for i in range(6)]
-            + [(7, i + 11) for i in range(6)]
-            + [(2, 11), (2, 14)]
+        pit_list = (
+            [
+                (0, 10),
+                (14, 10),
+                (0, 5),
+                (10, 4),
+                (14, 5),
+                (7, 6),
+                (7, 9),
+                (8, 15),
+                (13, 5),
+                (7, 0),
+                (13,12),
+                (12,14)
+            ]
+            + [(i, 15) for i in range(7)]
+            + [(i, j) for i in [6, 8] for j in [6, 7, 8, 9]]
+            + [(8, i) for i in range(11, 14)]
         )
-        ice_list = [(i, 10) for i in range(1, 14)] + [(5, 14), (2, 9), (2, 8), (2, 7)]
-        teleporter_list = [(7, 7), (2, 13)]
-        switch_list = [(4, 6)]
-        gate_list = [(8, 14), (6, 1)]
-        win_list = []
+
+        wall_list = (
+            [(7, i) for i in range(1, 3)]
+            + [
+                (7, 11),
+                (7, 4),
+                (6, 14),
+                (14, 9),
+                (10, 12),
+                (14, 7),
+                (14, 8),
+                (11, 3),
+                (8, 4),
+                (11, 8),
+                (0, 14),
+                (6, 12),
+                (0, 4),
+                (9, 8),
+                (0,1),
+                (14,1)
+            ]
+            + [(i, 7) for i in range(9, 13)]
+            + [(i, 15) for i in range(9, 15)]
+            + [(14, i) for i in range(11, 15)]
+            + [(i, 12) for i in range(1, 5)]
+            + [(13, i) for i in range(4)]
+        )
+        ice_list = [(i, j) for i in range(1, 13) for j in [5, 10]] + [
+            (7, 14),
+            (13, 10),
+            (0, 13),
+            (13,13)
+        ]
+        teleporter_list = [(3, 3), (4, 3), (3, 13), (1, 1)]
+        switch_list = [(4, 6), (13, 8), (13, 4), (2, 13)]
+        gate_list = [(5, 1), (13, 7), (11, 4), (5, 12),(0,0)]
+        win_list = [(14,0), (13,14)]
 
         player_list = []
-        rock_list = [
-            [(7, 12), (5, 12)],
-            [(0, 0), (1, 1)],
-        ]
+        rock_list = [(11, 12), (5, 8), (6, 2), (12, 4), (12, 5)]
 
         tiles = [
             pit_list,
@@ -330,7 +521,7 @@ class Level5(Level):
             wall_list,
             gate_list,
         ]
-        tops = [[[(7, 7), (7, 8)]]]
+        tops = []
 
         self.board = Board(self.flags, width, hight, tiles, middles, tops)
         for i, pos in enumerate(self.start_pos):
@@ -338,3 +529,55 @@ class Level5(Level):
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
         return self.board
+
+
+# class Level_preset(Level):
+#     # Flexibile start position for return levels
+#     def __init__(self, flags, start_pos=[(0, 0), (1, 1)]):
+#         super().__init__(start_pos, flags)
+
+#     def on_enter(self):
+#         """Run start up sequence/dialgue."""
+#         print(LINE, "\nPRESET", LINE)
+
+#     def check_for_events(self, board):
+#         """Check for level specific events like powerups or first time learn effect dialouge"""
+#         pass
+
+#     def setup_board(self):
+#         width, hight = 10, 10
+
+#         pit_list = []
+#         wall_list = []
+#         ice_list = []
+#         teleporter_list = []
+#         switch_list = []
+#         gate_list = []
+#         win_list = []
+
+#         player_list = []
+#         rock_list = []
+
+#         rock_spawner_list = []
+
+#         tiles = [
+#             pit_list,
+#             ice_list,
+#             teleporter_list,
+#             switch_list,
+#             win_list,
+#         ]
+#         middles = [
+#             player_list,
+#             rock_list,
+#             wall_list,
+#             gate_list,
+#         ]
+#         tops = [rock_spawner_list]
+
+#         self.board = Board(self.flags, width, hight, tiles, middles, tops)
+#         for i, pos in enumerate(self.start_pos):
+#             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+#             self.board.set_element(self.board.middle, pos, P)
+#             self.board.players.append(P)
+#         return self.board
