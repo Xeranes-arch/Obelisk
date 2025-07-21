@@ -102,8 +102,8 @@ def play(lv: Level, board: Board, lv_idx):
 
         # Quit to main
         if move == "Q":
-            board.flags["gates_go_up"] = False 
-            board.flags["wall_kick"] = False 
+            board.flags["gates_go_up"] = False
+            board.flags["wall_kick"] = False
             return move
 
         current_player = board.players[current_player_idx]
@@ -111,7 +111,10 @@ def play(lv: Level, board: Board, lv_idx):
 
         # End of turn effects
         board.update_gates(GAME_FLAGS)
+        print(board.get_element(board.middle, (5,1)))
+
         board.pit_check()
+        board.fall()
 
         # Win case
         if sorted([i.position for i in board.players]) == sorted(
@@ -122,22 +125,26 @@ def play(lv: Level, board: Board, lv_idx):
             lv.end()
             if lv_idx == 6:
                 for i in board.wins:
-                    board.flags["gates_go_up"] = True 
-                    board.flags["wall_kick"] = True 
+                    board.flags["gates_go_up"] = True
+                    board.flags["wall_kick"] = True
                     board.set_element(board.ground, i.position, Ground(i.position))
                     board.spawn_rocks()
-                board.wins=[]
+                board.wins = []
             else:
                 return "W"
-            
+
         # Secret Win case
-        if sorted([i.position for i in board.players]) == sorted([(7,7),(7,8)]):
-            print(LINE,LINE,"\nYOU'VE DONE IT!!!\nThe entire system shuts down and the archway of darkness opens up again.\nOutside, the Obelisk falls silent at last.")
+        if sorted([i.position for i in board.players]) == sorted([(7, 7), (7, 8)]):
+            print(
+                LINE,
+                LINE,
+                "\nYOU'VE DONE IT!!!\nThe entire system shuts down and the archway of darkness opens up again.\nOutside, the Obelisk falls silent at last.",
+            )
 
         # Death case
         if len(board.players) < 2:
-            board.flags["gates_go_up"] = False 
-            board.flags["wall_kick"] = False 
+            board.flags["gates_go_up"] = False
+            board.flags["wall_kick"] = False
             board.display()
             input("press enter to restart")
             return "died"
@@ -170,7 +177,7 @@ def main():
     ]
     Level_classes.pop(0)
 
-    lv_idx = 1
+    lv_idx = 6
     unlocked_levels = 1
 
     menu_skip = True
@@ -184,7 +191,7 @@ def main():
         lv: Level = Level_classes[lv_idx](GAME_FLAGS)
         lv.on_enter()
         board = lv.setup_board()
-        exit_status = play(lv, board,lv_idx)
+        exit_status = play(lv, board, lv_idx)
 
         if exit_status == "W" and lv_idx == unlocked_levels:
             unlocked_levels += 1
@@ -197,6 +204,7 @@ def main():
         if exit_status == "died":
             menu_skip = True
 
+
 if __name__ == "__main__":
     main()
 
@@ -208,3 +216,7 @@ if __name__ == "__main__":
 ### Kick rebound enables pulling another onto ice maybe
 
 ### TODO wall kick off switch over pit onto gate
+
+### TODO patch out two skips after make copy
+
+### TODO freeze player to use as wall

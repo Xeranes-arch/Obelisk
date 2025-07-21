@@ -52,7 +52,7 @@ class Board:
 
         # Set middle layer
         for middle_type, obj in zip(middles, MIDDLE_OBJECTS):
-            if not obj == Rock or self.flags["rocks_spawn"]:
+            if obj != Rock or self.flags["rocks_spawn"]:
                 for pos in middle_type:
                     temp = obj(pos)
                     self.set_element(self.middle, pos, temp)
@@ -82,36 +82,39 @@ class Board:
         self.initial_middle = copy.deepcopy(self.middle)
         # Account for rocks. Should not respawn.
         for i in middles[1]:
-            self.set_element(self.initial_middle,i,None)
+            self.set_element(self.initial_middle, i, None)
         self.initial_top = copy.deepcopy(self.top)
 
         # Switch state
         self.switch = False
 
     def set_element(self, layer, position, obj):
-        """Modify grid"""
+        """Modify layer at position"""
         row, col = self.wrap(position)
         layer[row][col] = obj
 
     def get_element(self, layer, position):
-        """Read grid at position"""
+        """Read layer at position"""
         row, col = self.wrap(position)
         return layer[row][col]
 
     def get_stack(self, position):
-        """Return stack of objects across layers"""
+        """Return stack of objects across layers at position"""
         stack = []
         for layer in [self.top, self.middle, self.ground]:
             stack.append(self.get_element(layer, position))
         return stack
 
     def get_collision_target(self, partyA, new_pos):
+        """Scan stack for proper target to execute collision with"""
         stack = self.get_stack(new_pos)
+        print(stack)
         if not partyA.topside:
             stack.pop(0)
         for obj in stack:
             if obj == None:
                 continue
+            print(obj)
             return obj
 
     def display(self):
@@ -120,7 +123,10 @@ class Board:
         for layer in [self.middle, self.top]:
             for i in range(self.hight):
                 for j in range(self.width):
-                    if layer[i][j] != None and (not isinstance(layer[i][j],RockSpawner) or self.flags["rocks_spawn"]):
+                    if layer[i][j] != None and (
+                        not isinstance(layer[i][j], RockSpawner)
+                        or self.flags["rocks_spawn"]
+                    ):
                         vis[i][j] = layer[i][j].repr
         print("\n")
         for row in vis:
@@ -128,25 +134,30 @@ class Board:
         print("\n")
 
     def spawn_rocks(self):
+        """Spawn rocks in middle of Level."""
         for pos in self.rocks_to_be_spawned:
             self.set_element(self.middle, pos, Rock(pos))
-            self.rocks.append(self.get_element(self.middle,pos))
+            self.rocks.append(self.get_element(self.middle, pos))
 
     def wrap(self, position):
-        """Board specific folding of coordinates"""
+        """Folding of coordinates"""
         return (position[0] % self.hight, position[1] % self.width)
 
     def reset(self, layer, position, initial):
-        """Reset a specific square back to initial value"""
-        row, col = position
-        if isinstance(initial[row][col], Gate):
-            self.set_element(layer, position, None)
-        else:
-            self.set_element(layer, position, initial[row][col])
+        """Reset a a layer at position back to initial value"""
+        # WTF is this... Any time you exit a space it will be empty after that. This is just a decrepid bit from when everything in the game was still in one layer...
 
+        # row, col = position
+        # # if leaving a Gate (only in middle layer), it must be off, so set None
+        # if isinstance(initial[row][col], Gate):
+        #     self.set_element(layer, position, None)
+        # else:
+        #     self.set_element(layer, position, initial[row][col])
+
+        self.set_element(layer, position, None)
 
     def update_teleporters(self):
-
+        """Updates free teleporters list, so collision with tps can function properly."""
         t_pos = [i.position for i in self.teleporters]
         pr_pos = [i.position for i in self.players]
         for i in self.rocks:
@@ -159,14 +170,35 @@ class Board:
         self.free_teleporters = [
             tp for tp in self.teleporters if tp.position in free_t_pos
         ]
+
     def pit_check(self):
+        """
+        Players over pits fall in.
+        Specifically for the case of wall jumping over pit but being stopped from moving on.
+        """
         for p in self.players:
             tile = self.get_element(self.ground, p.position)
             if isinstance(tile, Pit):
-                print(LINE,f"\nOh no {p} has fallen into a pit and died!", LINE)
+                print(LINE, f"\nOh no {p} has fallen into a pit and died!", LINE)
                 p.kill(self)
-                
+
+    def fall(self):
+        """
+        Sets any floating thing to the ground.
+        Ensures, that when rock is removed below player/rock, they fall.
+        """
+        for row in self.top:
+            for i in row:
+                if i != None and self.get_element(self.middle, i.position) == None:
+                    i.topside = False
+                    self.set_element(self.middle, i.position, i)
+                    self.reset(self.top, i.position, self.initial_top)
+
     def update_gates(self, flags):
+        """
+        Handles all gate states as well as objects on them.
+        Switch state change is not handled in collisions. Must be called.
+        """
         players_pos = [i.position for i in self.players]
         gates_pos = [i.position for i in self.gates]
         switches_pos = [i.position for i in self.switches]
@@ -184,23 +216,20 @@ class Board:
             if i not in moveables_pos:
                 free_gates_pos.append(i)
 
-
-        # Switch pressed
+            # Switch pressed
             if any(ppos in switches_pos for ppos in moveables_pos):
                 self.switch = True
-        # Switch not pressed
+            # Switch not pressed
             else:
                 self.switch = False
 
-
         for gate in self.gates:
-            
+
             # Find moveable on gate if any
             moveable_on_gate = None
             if gate.position in moveables_pos:
                 moveable_on_gate = moveables[moveables_pos.index(gate.position)]
                 # print(moveable_on_gate)
-
 
             if self.switch:
                 gate.is_active = False
@@ -211,7 +240,7 @@ class Board:
                 if isinstance(middle_element, Gate):
                     if isinstance(top_element, Player) or isinstance(top_element, Rock):
                         top_element.topside = False
-                    self.set_element(self.middle,gate.position,top_element)
+                    self.set_element(self.middle, gate.position, top_element)
                     self.reset(self.top, gate.position, self.initial_top)
 
             if not self.switch:
@@ -220,23 +249,59 @@ class Board:
                 # Raise moveable onto gate if gates go up
                 if moveable_on_gate:
                     if self.flags["gates_go_up"]:
-                        moveable_on_gate.topside = True
-                        self.set_element(self.top, moveable_on_gate.position, moveable_on_gate)
-                        self.reset(self.middle, moveable_on_gate.position, self.initial_middle)
-                        
-
+                        # Do not raise the gate if there are two rocks on top
+                        if isinstance(
+                            self.get_element(self.top, moveable_on_gate.position), Rock
+                        ):
+                            pass
+                        # Ascenion if Player on Rock on Gate goes up
+                        elif isinstance(
+                            self.get_element(self.top, moveable_on_gate.position),
+                            Player,
+                        ) and isinstance(
+                            self.get_element(self.middle, moveable_on_gate.position),
+                            Rock,
+                        ):
+                            print(
+                                LINE,
+                                f"{moveable_on_gate}, ascends into a higher strata and doesn't further asociate with this bs down here.",
+                                LINE,
+                            )
+                            moveable_on_gate.kill(self)
+                            # Put gates on middle again
+                            self.set_element(self.middle, gate.position, gate)
+                        # Just raise it up
+                        else:
+                            moveable_on_gate.topside = True
+                            self.set_element(
+                                self.top, moveable_on_gate.position, moveable_on_gate
+                            )
+                            print("on_gate, flag, no top")
+                            self.reset(
+                                self.middle,
+                                moveable_on_gate.position,
+                                self.initial_middle,
+                                # Put gates on middle again
+                                self.set_element(self.middle, gate.position, gate),
+                            )
+                            print(self.get_element(self.middle, (5, 1)))
 
                     # Kill player if gates go down
                     else:
-                        if isinstance(moveable_on_gate,Player): 
+                        if isinstance(moveable_on_gate, Player):
                             self.display()
-                            print(LINE,
+                            print(self.flags)
+                            print(
+                                LINE,
                                 f"\n{moveable_on_gate} got squashed by a GATE!",
                                 LINE,
                             )
                             moveable_on_gate.kill(self)
+                            # Put gates on middle again
+                            self.set_element(self.middle, gate.position, gate)
                             self.update_gates(flags)
-                        else:
+                        elif isinstance(moveable_on_gate, Rock):
                             pass
-                # Put gates on middle again
-                self.set_element(self.middle,gate.position,gate)
+                        else:
+                            # Put gates on middle again
+                            self.set_element(self.middle, gate.position, gate)
