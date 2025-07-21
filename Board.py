@@ -30,6 +30,8 @@ class Board:
         self.middle = [[None for _ in range(width)] for _ in range(hight)]
         self.top = [[None for _ in range(width)] for _ in range(hight)]
 
+        self.snapshots = []
+        
         # TODO Set all ground tiles from list given by level
         for tile_type, obj in zip(tiles, GROUND_OBJECTS):
             for pos in tile_type:
@@ -245,10 +247,14 @@ class Board:
                 # Raise moveable onto gate if gates go up
                 if moveable_on_gate:
                     if self.flags["gates_go_up"]:
-                        moveable_on_gate.topside = True
-                        self.set_element(self.top, moveable_on_gate.position, moveable_on_gate)
-                        self.reset(self.middle, moveable_on_gate.position, self.initial_middle)
-                        
+                        if isinstance(self.get_element(self.middle,moveable_on_gate.position), Rock) and isinstance(self.get_element(self.top,moveable_on_gate.position), Player):
+                            print(LINE, f"{moveable_on_gate} ascends into a higher strata and doesn't asociate with this bs anymore.", LINE)
+                            moveable_on_gate.kill(self)
+                        else:
+                            moveable_on_gate.topside = True
+                            self.set_element(self.top, moveable_on_gate.position, moveable_on_gate)
+                            self.reset(self.middle, moveable_on_gate.position, self.initial_middle)
+                            
 
 
                     # Kill player if gates go down

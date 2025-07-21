@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 # sys.stdout = Indent()
 
-DELAY = 0.1
+DELAY = 0
 LINE = "\n_________________________\n"
 
 
@@ -57,7 +57,7 @@ class GameObject:
         return new_self_pos, push_direction
 
     def move(self, other, board, target_layer=False):
-        # Find default target layer
+        # default target layer
         if not target_layer:
             target_layer = board.middle
 
@@ -69,7 +69,6 @@ class GameObject:
         # Set on board
         board.set_element(target_layer, other.position, other)
         # board.display()
-
 
 ### Ground level
 
@@ -118,7 +117,11 @@ class Ice(GameObject):
 
         # Main move
         self.move(other, board)
-        board.display()
+
+        # Take Image for pygame
+        board.snapshots.append([copy.deepcopy(board.ground), copy.deepcopy(board.middle), copy.deepcopy(board.top)])
+        
+        # board.display()
         time.sleep(DELAY)
 
         flying_flag = False
@@ -316,13 +319,18 @@ class Wall(GameObject):
         self.repr = "#"
 
     def collide_with_player(self, other, board: "Board"):
+        # Walk on wall
         if other.topside:
             self.move(other, board, board.top)
+        # Wall jump
         elif board.flags["wall_kick"]:
             _, push_dir = self.push(other)
             push_dir = [-1 * i for i in push_dir]
             other.flying = True
+
+            # Make two tumovesns
             for i in range(2):
+                time.sleep(DELAY)
                 new_pos = (
                     other.position[0] + push_dir[0],
                     other.position[1] + push_dir[1],
@@ -330,9 +338,12 @@ class Wall(GameObject):
                 partyB = board.get_collision_target(other, new_pos)
                 if not isinstance(partyB, Wall):
                     other.collide_with(partyB, board)
-                    board.display()
-                    time.sleep(DELAY)
+                    # board.display()
+                    # time.sleep(DELAY)
                 other.flying = False
+                if not i:
+                    board.snapshots.append([copy.deepcopy(board.ground), copy.deepcopy(board.middle), copy.deepcopy(board.top)])
+                        
 
     def collide_with_rock(self, other, board: "Board"):
         if other.topside:

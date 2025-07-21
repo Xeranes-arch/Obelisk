@@ -21,7 +21,9 @@ class Level:
                 "rocks_spawn": False,
                 "wall_kick": False,
             }
-
+    def __repr__(self):
+        return self.__class__.__name__
+    
     def on_enter(self):
         """Show dialogue or perform actions when the level starts."""
         pass
@@ -566,7 +568,6 @@ class Level7(Level):
 
     def on_enter(self):
         """Run start up sequence/dialgue."""
-        print(LINE, "\LEVEL 7", LINE)
 
     def check_for_events(self, board):
         """Check for level specific events like powerups or first time learn effect dialouge"""
@@ -623,7 +624,6 @@ class Level8(Level):
 
     def on_enter(self):
         """Run start up sequence/dialgue."""
-        print(LINE, "\nLEVEL 8", LINE)
 
     def check_for_events(self, board):
         """Check for level specific events like powerups or first time learn effect dialouge"""
