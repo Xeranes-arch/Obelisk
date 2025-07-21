@@ -481,8 +481,8 @@ class Level6(Level):
                 (12, 14),
                 (9, 7),
                 (6, 12),
-                (10,7),
-                (10,3)
+                (10, 7),
+                (10, 3),
             ]
             + [(i, 15) for i in range(7)]
             + [(i, j) for i in [6, 8] for j in [6, 7, 8, 9]]
@@ -554,80 +554,39 @@ class Level6(Level):
         return self.board
 
 
-class Levelo6(Level):
-    def __init__(self, flags):
-        super().__init__([(0, 3), (4, 4)], flags)
+class Level7(Level):
+    # Flexibile start position for return levels
+    def __init__(self, flags, start_pos=[(0, 0), (2, 0)]):
+        flags = {
+            "gates_go_up": True,
+            "rocks_spawn": True,
+            "wall_kick": True,
+        }
+        super().__init__(start_pos, flags)
 
-    def end(self):
-        print(
-            LINE,
-            "\nThe entire Dungeon starts shaking. Is it done?\nCracks form all over the room and chunks fall from it. The Gates start malfunctioning and start raising from the ground to shut passages instead of coming down from the ceiling.\n A siren blares: NO PASSAGE PRotednfvk the hiden swi ELIMINATE THe the island in the center KILL THE INTRUDERS. \nAmidst this chaos a faint glow envelops the heroes to protect them from the rubble. The blessing coalesces into their boot enabeling them to wall jump.\nThe shaking dies down but nothing else happens...",
-            LINE,
-        )
-        self.enter()
+    def on_enter(self):
+        """Run start up sequence/dialgue."""
+        print(LINE, "\LEVEL 7", LINE)
+
+    def check_for_events(self, board):
+        """Check for level specific events like powerups or first time learn effect dialouge"""
+        pass
 
     def setup_board(self):
-        width, hight = 16, 15
+        width, hight = 10, 4
 
-        pit_list = (
-            [
-                (0, 10),
-                (14, 10),
-                (0, 5),
-                (10, 4),
-                (14, 5),
-                (7, 6),
-                (7, 9),
-                (8, 15),
-                (13, 5),
-                (7, 0),
-                (13, 12),
-                (12, 14),
-            ]
-            + [(i, 15) for i in range(7)]
-            + [(i, j) for i in [6, 8] for j in [6, 7, 8, 9]]
-            + [(8, i) for i in range(11, 14)]
-        )
-
-        wall_list = (
-            [(7, i) for i in range(1, 3)]
-            + [
-                (7, 11),
-                (7, 4),
-                (6, 14),
-                (14, 9),
-                (10, 12),
-                (14, 7),
-                (14, 8),
-                (11, 3),
-                (8, 4),
-                (11, 8),
-                (0, 14),
-                (6, 12),
-                (0, 4),
-                (9, 8),
-                (0, 1),
-                (14, 1),
-            ]
-            + [(i, 7) for i in range(9, 13)]
-            + [(i, 15) for i in range(9, 15)]
-            + [(14, i) for i in range(11, 15)]
-            + [(i, 12) for i in range(1, 5)]
-            + [(13, i) for i in range(4)]
-        )
-        ice_list = [(i, j) for i in range(1, 13) for j in [5, 10]] + [
-            (7, 14),
-            (13, 10),
-            (0, 13),
-            (13, 13),
-        ]
-        teleporter_list = [(3, 3), (4, 3), (3, 13), (1, 1)]
-        switch_list = [(4, 6), (13, 8), (13, 4), (2, 13)]
-        gate_list = [(5, 1), (13, 7), (11, 4), (5, 12), (0, 0)]
-        win_list = [(14, 0), (13, 14)]
+        pit_list = [(2, 7), (2, 8), (2, 9), (0, 8)]
+        wall_list = [(0, 7), (0, 9), (1, 7), (1, 9)]
+        ice_list = []
+        teleporter_list = []
+        switch_list = [(1, 0)]
+        gate_list = [(1, 1)]
+        win_list = [(1, 8), (3, 8)]
 
         player_list = []
-        rock_list = [(11, 12), (5, 8), (6, 2), (12, 4), (12, 5)]
+        rock_list = [(1, 3), (1, 2)]
+
+        rock_spawner_list = []
 
         tiles = [
             pit_list,
@@ -642,7 +601,7 @@ class Levelo6(Level):
             wall_list,
             gate_list,
         ]
-        tops = []
+        tops = [rock_spawner_list]
 
         self.board = Board(self.flags, width, hight, tiles, middles, tops)
         for i, pos in enumerate(self.start_pos):
@@ -652,9 +611,166 @@ class Levelo6(Level):
         return self.board
 
 
+class Level8(Level):
+    # Flexibile start position for return levels
+    def __init__(self, flags, start_pos=[(0, 0), (2, 0)]):
+        flags = {
+            "gates_go_up": True,
+            "rocks_spawn": True,
+            "wall_kick": True,
+        }
+        super().__init__(start_pos, flags)
+
+    def on_enter(self):
+        """Run start up sequence/dialgue."""
+        print(LINE, "\nLEVEL 8", LINE)
+
+    def check_for_events(self, board):
+        """Check for level specific events like powerups or first time learn effect dialouge"""
+        pass
+
+    def setup_board(self):
+        width, hight = 10, 7
+
+        pit_list = [(2, 7), (2, 8), (2, 9), (3, 9), (3, 5), (2, 5), (2, 6), (0, 8)] + [
+            (4, i) for i in range(5, 10)
+        ]
+        wall_list = [(0, 7), (0, 9), (1, 7), (1, 9)]
+        ice_list = []
+        teleporter_list = [(1, 8), (3, 6), (6, 0)]
+        switch_list = [(1, 0)]
+        gate_list = [(1, 2)]
+        win_list = [(3, 7), (3, 8)]
+
+        player_list = []
+        rock_list = [(1, 3), (1, 4), (0, 2), (1, 1)]
+
+        rock_spawner_list = []
+
+        tiles = [
+            pit_list,
+            ice_list,
+            teleporter_list,
+            switch_list,
+            win_list,
+        ]
+        middles = [
+            player_list,
+            rock_list,
+            wall_list,
+            gate_list,
+        ]
+        tops = [rock_spawner_list]
+
+        self.board = Board(self.flags, width, hight, tiles, middles, tops)
+        for i, pos in enumerate(self.start_pos):
+            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+            self.board.set_element(self.board.middle, pos, P)
+            self.board.players.append(P)
+        return self.board
+
+
+# class Levelo6_the_way_we_played_at_party(Level):
+#     def __init__(self, flags):
+#         super().__init__([(0, 3), (4, 4)], flags)
+
+#     def end(self):
+#         print(
+#             LINE,
+#             "\nThe entire Dungeon starts shaking. Is it done?\nCracks form all over the room and chunks fall from it. The Gates start malfunctioning and start raising from the ground to shut passages instead of coming down from the ceiling.\n A siren blares: NO PASSAGE PRotednfvk the hiden swi ELIMINATE THe the island in the center KILL THE INTRUDERS. \nAmidst this chaos a faint glow envelops the heroes to protect them from the rubble. The blessing coalesces into their boot enabeling them to wall jump.\nThe shaking dies down but nothing else happens...",
+#             LINE,
+#         )
+#         self.enter()
+
+#     def setup_board(self):
+#         width, hight = 16, 15
+
+#         pit_list = (
+#             [
+#                 (0, 10),
+#                 (14, 10),
+#                 (0, 5),
+#                 (10, 4),
+#                 (14, 5),
+#                 (7, 6),
+#                 (7, 9),
+#                 (8, 15),
+#                 (13, 5),
+#                 (7, 0),
+#                 (13, 12),
+#                 (12, 14),
+#             ]
+#             + [(i, 15) for i in range(7)]
+#             + [(i, j) for i in [6, 8] for j in [6, 7, 8, 9]]
+#             + [(8, i) for i in range(11, 14)]
+#         )
+
+#         wall_list = (
+#             [(7, i) for i in range(1, 3)]
+#             + [
+#                 (7, 11),
+#                 (7, 4),
+#                 (6, 14),
+#                 (14, 9),
+#                 (10, 12),
+#                 (14, 7),
+#                 (14, 8),
+#                 (11, 3),
+#                 (8, 4),
+#                 (11, 8),
+#                 (0, 14),
+#                 (6, 12),
+#                 (0, 4),
+#                 (9, 8),
+#                 (0, 1),
+#                 (14, 1),
+#             ]
+#             + [(i, 7) for i in range(9, 13)]
+#             + [(i, 15) for i in range(9, 15)]
+#             + [(14, i) for i in range(11, 15)]
+#             + [(i, 12) for i in range(1, 5)]
+#             + [(13, i) for i in range(4)]
+#         )
+#         ice_list = [(i, j) for i in range(1, 13) for j in [5, 10]] + [
+#             (7, 14),
+#             (13, 10),
+#             (0, 13),
+#             (13, 13),
+#         ]
+#         teleporter_list = [(3, 3), (4, 3), (3, 13), (1, 1)]
+#         switch_list = [(4, 6), (13, 8), (13, 4), (2, 13)]
+#         gate_list = [(5, 1), (13, 7), (11, 4), (5, 12), (0, 0)]
+#         win_list = [(14, 0), (13, 14)]
+
+#         player_list = []
+#         rock_list = [(11, 12), (5, 8), (6, 2), (12, 4), (12, 5)]
+
+#         tiles = [
+#             pit_list,
+#             ice_list,
+#             teleporter_list,
+#             switch_list,
+#             win_list,
+#         ]
+#         middles = [
+#             player_list,
+#             rock_list,
+#             wall_list,
+#             gate_list,
+#         ]
+#         tops = []
+
+#         self.board = Board(self.flags, width, hight, tiles, middles, tops)
+#         for i, pos in enumerate(self.start_pos):
+#             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
+#             self.board.set_element(self.board.middle, pos, P)
+#             self.board.players.append(P)
+#         return self.board
+
+
 # class Level_preset(Level):
 #     # Flexibile start position for return levels
-#     def __init__(self, flags, start_pos=[(0, 0), (1, 1)]):
+#     def __init__(self, flags, start_pos=[(0, 0), (0, 1)]):
 #         super().__init__(start_pos, flags)
 
 #     def on_enter(self):
@@ -702,7 +818,3 @@ class Levelo6(Level):
 #             self.board.set_element(self.board.middle, pos, P)
 #             self.board.players.append(P)
 #         return self.board
-
-
-# TODO level where you do a snake strat. From one gate two rocks, one player on top and then walk on top to some up target.
-# Then do the same but bring a rock along. (4 rocks, only stright lines? No. Is possible.)

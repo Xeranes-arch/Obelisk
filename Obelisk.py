@@ -111,8 +111,6 @@ def play(lv: Level, board: Board, lv_idx):
 
         # End of turn effects
         board.update_gates(GAME_FLAGS)
-        print(board.get_element(board.middle, (5,1)))
-
         board.pit_check()
         board.fall()
 
@@ -177,7 +175,7 @@ def main():
     ]
     Level_classes.pop(0)
 
-    lv_idx = 6
+    lv_idx = 8
     unlocked_levels = 1
 
     menu_skip = True
