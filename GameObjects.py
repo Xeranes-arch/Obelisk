@@ -1,27 +1,14 @@
 import copy
 import time
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from Board import Board  # only used for type hints
 
-# indent_output.py
-# import sys
 
-# class Indent:
-#     def __init__(self, indent="    "):
-#         self.indent = indent
-#     def write(self, text):
-#         for line in text.splitlines(True):
-#             sys.__stdout__.write(self.indent + line)
-#     def flush(self):
-#         pass
-
-# sys.stdout = Indent()
 
 DELAY = 0
 LINE = "\n_________________________\n"
-
+RE = "press enter to restart"
 
 class GameObject:
     def __init__(self, position):
@@ -42,7 +29,7 @@ class GameObject:
             initial_layer = board.initial_top
         else:
             layer = board.middle
-            initial_layer = board.initial_top
+            initial_layer = board.initial_middle
         return layer, initial_layer
 
     def push(self, other):
@@ -62,6 +49,7 @@ class GameObject:
             target_layer = board.middle
 
         layer, ini = other.find_layer(board)
+
         # Reset old
         board.reset(layer, other.position, ini)
         # Set pos
@@ -97,6 +85,8 @@ class Pit(GameObject):
             self.move(other, board)
         else:
             other.kill(board)
+            board.msg = (LINE + f"\nOh no {other} has fallen into a pit and died!" + LINE + RE)
+
 
     def collide_with_rock(self, other, board: "Board"):
         other.remove(board)
@@ -148,8 +138,11 @@ class Ice(GameObject):
 
         # Main move
         self.move(other, board)
-        board.display()
-        time.sleep(DELAY)
+
+        # Take Image for pygame
+        board.snapshots.append([copy.deepcopy(board.ground), copy.deepcopy(board.middle), copy.deepcopy(board.top)])
+        
+        # board.display() - non pygame
         if other.topside:
             other.topside = False
         else:
@@ -242,7 +235,7 @@ class Player(GameObject):
 
     def collide_with_player(self, other, board: "Board"):
         if other.topside and not self.topside:
-            print(f"{self} got squashed by {other} and died!", LINE)
+            board.msg = f"{self} got squashed by {other} and died!"+ LINE + RE
             self.kill(board)
             self.move(other, board)
             return
@@ -254,7 +247,7 @@ class Player(GameObject):
 
     def collide_with_rock(self, other, board: "Board"):
         if other.topside and not self.topside:
-            print(f"{self} got squashed by {other} and died!", LINE)
+            board.msg = f"{self} got squashed by {other} and died!"+ LINE + RE
             self.kill(board)
             self.move(other, board)
             return
@@ -360,11 +353,12 @@ class Gate(GameObject):
         if self.is_active:
             if other.topside:
                 self.move(other, board, board.top)
-        else:
-            new_other = board.get_element(board.middle, self.position)
-            print("HEERE", new_other)
-            exit()
-            other.collide_with(new_other, board)
+        # You know what I think no collision with a gate will happen when it is inactive... deprecated
+        # else:
+        #     new_other = board.get_element(board.middle, self.position)
+        #     print("HEERE", new_other)
+        #     exit()
+        #     other.collide_with(new_other, board)
 
     def collide_with_rock(self, other, board):
         if self.is_active:
