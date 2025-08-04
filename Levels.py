@@ -94,7 +94,6 @@ class Level:
 
                                 # All riddles solved
                                 if exit_flag:
-                                    print("returning true")
                                     return True
                                 
                                 # break while True; skip to next riddle
@@ -128,7 +127,6 @@ class Level:
                                 if nr_solved == nr_of_riddles:
                                     text = "Correct!" + LINE + "LEVEL CLEAR" + LINE + CON
                                     exit_flag = True
-                                    print("EXit flag set")
                                     break
 
                             # Wrong answer
@@ -160,63 +158,7 @@ class Level:
 
     def end(self, game):
         return True
-
-
-
-class Level0(Level):
-
-    # Flexibile start position for return levels
-    def __init__(self):
-        super().__init__()
-
-    def on_enter(self):
-        """Run start up sequence/dialgue."""
-        print(LINE, "\nCongratz. You've found the bug checking site!" + LINE)
-
-    def setup_board(self):
-        # Geometry inflexible
-        width = 15
-        hight = 15
-
-        start_pos = [(5, 5), (5, 6)]
-
-        # Grounds
-        pit_list = [(4, 5), (6, 2)]
-        ice_list = [(i, 6) for i in range(1, 5)]
-        teleporter_list = [(5, 4), (1, 4)]
-        win_list = [(7, 5), (6, 6)]
-        switch_list = [(0, 6), (7, 2), (11, 11)]
-        tiles = [
-            pit_list,
-            ice_list,
-            teleporter_list,
-            switch_list,
-            win_list,
-        ]
-
-        # Middles
-        player_list = []
-        rock_list = [(1, 3), (2, 3), (3, 2), (10, 10), (10, 9)]
-        wall_list = [(5, 7), (0, 2), (1, 5), (12, 12)]
-        gate_list = [(6, 5), (1, 2), (0, 4), (0, 5), (2, 2), (5, 2), (11, 12), (12, 11)]
-        middles = [player_list, rock_list, wall_list, gate_list]
-
-        # Tops
-        tops = []
-
-        elements = [tiles, middles, tops]
-        self.board = Board(self.flags, width, hight, elements)
-
-        # Set players
-        for i, pos in enumerate(start_pos):
-            P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
-            self.board.set_element(self.board.middle, pos, P)
-            self.board.players.append(P)
-
-        win_msg = "\nDONE!!!\n" + LINE + CON
-        self.board.win_msg = win_msg
-        return self.board
-
+    
 
 class Level1(Level):
     def __init__(self):
@@ -298,7 +240,6 @@ class Level1(Level):
             + LINE
         )
         res = self.riddle(game,[riddle_text],[0])
-        print("Res", res)
         return res
 
 class Level2(Level):
@@ -836,153 +777,3 @@ class Level8(Level):
         win_msg = "\nDONE!!!\n" + LINE + CON
         self.board.win_msg = win_msg
         return self.board
-
-
-        # class Levelo6_the_way_we_played_at_party(Level):
-        #     def __init__(self, flags):
-        #         super().__init__([(0, 3), (4, 4)], flags)
-
-        #     def end(self):
-        #         print(
-        #             LINE,
-        #             "\nThe entire Dungeon starts shaking. Is it done?\nCracks form all over the room and chunks fall from it. The Gates start malfunctioning and start raising from the ground to shut passages instead of coming down from the ceiling.\n A siren blares: NO PASSAGE PRotednfvk the hiden swi ELIMINATE THe the island in the center KILL THE INTRUDERS. \nAmidst this chaos a faint glow envelops the heroes to protect them from the rubble. The blessing coalesces into their boot enabeling them to wall jump.\nThe shaking dies down but nothing else happens...",
-        #             LINE,
-        #         )
-        #         self.enter()
-
-        #     def setup_board(self):
-        #         width, hight = 16, 15
-
-        #         pit_list = (
-        #             [
-        #                 (0, 10),
-        #                 (14, 10),
-        #                 (0, 5),
-        #                 (10, 4),
-        #                 (14, 5),
-        #                 (7, 6),
-        #                 (7, 9),
-        #                 (8, 15),
-        #                 (13, 5),
-        #                 (7, 0),
-        #                 (13, 12),
-        #                 (12, 14),
-        #             ]
-        #             + [(i, 15) for i in range(7)]
-        #             + [(i, j) for i in [6, 8] for j in [6, 7, 8, 9]]
-        #             + [(8, i) for i in range(11, 14)]
-        #         )
-
-        #         wall_list = (
-        #             [(7, i) for i in range(1, 3)]
-        #             + [
-        #                 (7, 11),
-        #                 (7, 4),
-        #                 (6, 14),
-        #                 (14, 9),
-        #                 (10, 12),
-        #                 (14, 7),
-        #                 (14, 8),
-        #                 (11, 3),
-        #                 (8, 4),
-        #                 (11, 8),
-        #                 (0, 14),
-        #                 (6, 12),
-        #                 (0, 4),
-        #                 (9, 8),
-        #                 (0, 1),
-        #                 (14, 1),
-        #             ]
-        #             + [(i, 7) for i in range(9, 13)]
-        #             + [(i, 15) for i in range(9, 15)]
-        #             + [(14, i) for i in range(11, 15)]
-        #             + [(i, 12) for i in range(1, 5)]
-        #             + [(13, i) for i in range(4)]
-        #         )
-        #         ice_list = [(i, j) for i in range(1, 13) for j in [5, 10]] + [
-        #             (7, 14),
-        #             (13, 10),
-        #             (0, 13),
-        #             (13, 13),
-        #         ]
-        #         teleporter_list = [(3, 3), (4, 3), (3, 13), (1, 1)]
-        #         switch_list = [(4, 6), (13, 8), (13, 4), (2, 13)]
-        #         gate_list = [(5, 1), (13, 7), (11, 4), (5, 12), (0, 0)]
-        #         win_list = [(14, 0), (13, 14)]
-
-        #         player_list = []
-        #         rock_list = [(11, 12), (5, 8), (6, 2), (12, 4), (12, 5)]
-
-        #         tiles = [
-        #             pit_list,
-        #             ice_list,
-        #             teleporter_list,
-        #             switch_list,
-        #             win_list,
-        #         ]
-        #         middles = [
-        #             player_list,
-        #             rock_list,
-        #             wall_list,
-        #             gate_list,
-        #         ]
-        #         tops = []
-
-        # elements = [tiles, middles, tops]
-        #         self.board = Board(self.flags, width, hight, elements)
-        #         for i, pos in enumerate(self.start_pos):
-        #             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
-        #             self.board.set_element(self.board.middle, pos, P)
-        #             self.board.players.append(P)
-        #         return self.board
-
-        # class Level_preset(Level):
-        #     # Flexibile start position for return levels
-        #     def __init__(self):
-        #         super().__init__(start_pos)
-
-        #     def on_enter(self,game):
-        #         """Run start up sequence/dialgue."""
-        #         print(LINE, "\nPRESET"+ LINE)
-
-        #     def setup_board(self):
-        #         width, hight = 10, 10
-
-        #         start_pos=[(0, 0), (0, 1)]
-        #         pit_list = []
-        #         wall_list = []
-        #         ice_list = []
-        #         teleporter_list = []
-        #         switch_list = []
-        #         gate_list = []
-        #         win_list = []
-
-        #         player_list = []
-        #         rock_list = []
-
-        #
-
-        #         tiles = [
-        #             pit_list,
-        #             ice_list,
-        #             teleporter_list,
-        #             switch_list,
-        #             win_list,
-        #         ]
-        #         middles = [
-        #             player_list,
-        #             rock_list,
-        #             wall_list,
-        #             gate_list,
-        #         ]
-        #         tops = []
-
-        # elements = [tiles, middles, tops]
-
-
-#         self.board = Board(self.flags, width, hight, elements)
-#         for i, pos in enumerate(start_pos):
-#             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
-#             self.board.set_element(self.board.middle, pos, P)
-#             self.board.players.append(P)
-#         return self.board

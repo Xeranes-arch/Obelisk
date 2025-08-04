@@ -119,13 +119,11 @@ class Board:
     def get_collision_target(self, partyA, new_pos):
         """Scan stack for proper target to execute collision with"""
         stack = self.get_stack(new_pos)
-        # print(stack)
         if not partyA.topside:
             stack.pop(0)
         for obj in stack:
             if obj == None:
                 continue
-            # print(obj)
             return obj
 
     def take_snapshot(self, should_return=False):
@@ -190,7 +188,6 @@ class Board:
         if sorted([i.position for i in self.players]) == sorted(
             [i.position for i in self.wins]
         ):
-            print("here")
             self.win = True
             self.msg = self.win_msg
 
@@ -237,7 +234,6 @@ class Board:
             moveable_on_gate = None
             if gate.position in moveables_pos:
                 moveable_on_gate = moveables[moveables_pos.index(gate.position)]
-                # print(moveable_on_gate)
 
             if self.switch:
                 # Remove gate from middle

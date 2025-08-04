@@ -12,7 +12,7 @@ from GameObjects import *
 LINE = "\n_________________________\n"
 CON = "press enter to continiue"
 
-DELAY = 0.05
+DELAY = 0.1
 
 PLAYER1_INPUTS = ["w", "a", "s", "d"]
 PLAYER2_INPUTS = ["i", "j", "k", "l"]
@@ -280,13 +280,12 @@ def main():
             lv_idx = main_menu(game, unlocked_levels)
 
         # Start level
-        lv: Level = Level_instances[lv_idx]()
+        lv: Level = Level_instances[lv_idx-1]()
         board = lv.setup_board()
         exit_status = game.play(lv, board)
 
         if exit_status == "W":
             riddle_res = lv.end(game)
-            print(riddle_res)
             if riddle_res and lv_idx == unlocked_levels:
                 unlocked_levels += 1
                 lv_idx += 1
