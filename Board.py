@@ -11,7 +11,7 @@ TOP_OBJECTS = []
 
 
 class Board:
-    def __init__(self, flags, width=10, hight=10, elements=[]):
+    def __init__(self, flags, width=10, height=10, elements=[]):
 
         self.flags = flags
 
@@ -29,12 +29,12 @@ class Board:
 
         # Dimensions
         self.width = width
-        self.hight = hight
+        self.height = height
 
         # Board layers
-        self.ground = [[None for _ in range(width)] for _ in range(hight)]
-        self.middle = [[None for _ in range(width)] for _ in range(hight)]
-        self.top = [[None for _ in range(width)] for _ in range(hight)]
+        self.ground = [[None for _ in range(width)] for _ in range(height)]
+        self.middle = [[None for _ in range(width)] for _ in range(height)]
+        self.top = [[None for _ in range(width)] for _ in range(height)]
 
         self.snapshots = []
 
@@ -87,7 +87,7 @@ class Board:
                     self.wins.append(temp)
 
         # Set all other ground to Ground
-        for i in range(self.hight):
+        for i in range(self.height):
             for j in range(self.width):
                 if self.ground[i][j] == None:
                     self.set_element(self.ground, (i, j), Ground((i, j)))
@@ -116,7 +116,6 @@ class Board:
                 else:
                     self.set_element(self.top, pos, obj(pos))
 
-
     def get_collision_target(self, partyA, new_pos):
         """Scan stack for proper target to execute collision with"""
         stack = self.get_stack(new_pos)
@@ -129,24 +128,25 @@ class Board:
             # print(obj)
             return obj
 
-    def take_snapshot(self, should_return = False):
+    def take_snapshot(self, should_return=False):
         snapshot = [
-                copy.deepcopy(self.ground),
-                copy.deepcopy(self.middle),
-                copy.deepcopy(self.top),
-            ]
+            copy.deepcopy(self.ground),
+            copy.deepcopy(self.middle),
+            copy.deepcopy(self.top),
+        ]
         if should_return:
             return snapshot
         self.snapshots.append(snapshot)
 
     def wrap(self, position):
         """Folding of coordinates"""
-        return (position[0] % self.hight, position[1] % self.width)
+        return (position[0] % self.height, position[1] % self.width)
 
     def reset(self, layer, position, initial):
         """Reset a a layer at position back to initial value"""
 
         # This bit would set it the space to the theoretical initial space. Just no reason for it.
+        # So far. If you were to implement... a waterfall that washes blood off a player, it should reappear after leaving its space
 
         # row, col = position
         # if leaving a Gate (only in middle layer), it must be off, so set None
@@ -182,10 +182,7 @@ class Board:
             tile = self.get_element(self.ground, p.position)
             if isinstance(tile, Pit):
                 self.msg = (
-                    LINE
-                    + f"\nOh no {p} has fallen into a pit and died!"
-                    + LINE
-                    + RE
+                    LINE + f"\nOh no {p} has fallen into a pit and died!" + LINE + RE
                 )
                 p.kill(self)
 
@@ -193,6 +190,7 @@ class Board:
         if sorted([i.position for i in self.players]) == sorted(
             [i.position for i in self.wins]
         ):
+            print("here")
             self.win = True
             self.msg = self.win_msg
 
@@ -242,8 +240,6 @@ class Board:
                 # print(moveable_on_gate)
 
             if self.switch:
-                gate.is_active = False
-
                 # Remove gate from middle
                 middle_element = self.get_element(self.middle, gate.position)
                 top_element = self.get_element(self.top, gate.position)
@@ -254,8 +250,6 @@ class Board:
                     self.reset(self.top, gate.position, self.initial_top)
 
             if not self.switch:
-                gate.is_active = True
-
                 # Raise moveable onto gate if gates go up
                 if moveable_on_gate:
                     if self.flags["gates_go_up"]:

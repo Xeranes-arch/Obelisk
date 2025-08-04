@@ -6,7 +6,6 @@ if TYPE_CHECKING:
 
 
 
-DELAY = 0
 LINE = "\n_________________________\n"
 RE = "press enter to restart"
 
@@ -58,13 +57,13 @@ class GameObject:
         board.set_element(target_layer, other.position, other)
         # board.display()
 
+
 ### Ground level
 
 
 class Ground(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "."
 
     def collide_with_player(self, other, board: "Board"):
         self.move(other, board)
@@ -78,7 +77,6 @@ class Ground(GameObject):
 class Pit(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "x"
 
     def collide_with_player(self, other, board: "Board"):
         if other.flying:
@@ -95,7 +93,6 @@ class Pit(GameObject):
 class Ice(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "□"
 
     def collide_with_player(self, other, board: "Board"):
 
@@ -111,9 +108,6 @@ class Ice(GameObject):
         # Take Image for pygame
         board.snapshots.append([copy.deepcopy(board.ground), copy.deepcopy(board.middle), copy.deepcopy(board.top)])
         
-        # board.display()
-        time.sleep(DELAY)
-
         flying_flag = False
         if isinstance(other, Player):
             if other.flying:
@@ -156,7 +150,6 @@ class Ice(GameObject):
 class Teleporter(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "T"
 
     def collide_with_player(self, other, board: "Board"):
         if len(board.free_teleporters) == 2:
@@ -177,7 +170,6 @@ class Teleporter(GameObject):
 class Switch(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "S"
 
     def collide_with_player(self, other, board: "Board"):
         self.move(other, board)
@@ -191,7 +183,6 @@ class Switch(GameObject):
 class Win(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "W"
 
     def collide_with_player(self, other, board: "Board"):
         self.move(other, board)
@@ -210,7 +201,6 @@ class Player(GameObject):
     def __init__(self, position, name=None, repr=None):
 
         self.position = position
-        self.repr = repr
         self.name = name
 
         # Property for being on top of walls
@@ -235,7 +225,7 @@ class Player(GameObject):
 
     def collide_with_player(self, other, board: "Board"):
         if other.topside and not self.topside:
-            board.msg = f"{self} got squashed by {other} and died!"+ LINE + RE
+            board.msg = LINE + f"{self} got squashed by {other} and died!"+ LINE + RE
             self.kill(board)
             self.move(other, board)
             return
@@ -247,7 +237,7 @@ class Player(GameObject):
 
     def collide_with_rock(self, other, board: "Board"):
         if other.topside and not self.topside:
-            board.msg = f"{self} got squashed by {other} and died!"+ LINE + RE
+            board.msg = LINE + f"{self} got squashed by {other} and died!"+ LINE + RE
             self.kill(board)
             self.move(other, board)
             return
@@ -261,7 +251,6 @@ class Player(GameObject):
 class Rock(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "R"
         self.topside = False
 
     def __str__(self):
@@ -309,7 +298,6 @@ class Rock(GameObject):
 class Wall(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "#"
 
     def collide_with_player(self, other, board: "Board"):
         # Walk on wall
@@ -323,7 +311,6 @@ class Wall(GameObject):
 
             # Make two tumovesns
             for i in range(2):
-                time.sleep(DELAY)
                 new_pos = (
                     other.position[0] + push_dir[0],
                     other.position[1] + push_dir[1],
@@ -331,8 +318,7 @@ class Wall(GameObject):
                 partyB = board.get_collision_target(other, new_pos)
                 if not isinstance(partyB, Wall):
                     other.collide_with(partyB, board)
-                    # board.display()
-                    # time.sleep(DELAY)
+
                 other.flying = False
                 if not i:
                     board.snapshots.append([copy.deepcopy(board.ground), copy.deepcopy(board.middle), copy.deepcopy(board.top)])
@@ -346,27 +332,14 @@ class Wall(GameObject):
 class Gate(GameObject):
     def __init__(self, position):
         super().__init__(position)
-        self.repr = "G"
-        self.is_active = True
 
     def collide_with_player(self, other, board: "Board"):
-        if self.is_active:
-            if other.topside:
-                self.move(other, board, board.top)
-        # You know what I think no collision with a gate will happen when it is inactive... deprecated
-        # else:
-        #     new_other = board.get_element(board.middle, self.position)
-        #     print("HEERE", new_other)
-        #     exit()
-        #     other.collide_with(new_other, board)
+        if other.topside:
+            self.move(other, board, board.top)
 
     def collide_with_rock(self, other, board):
-        if self.is_active:
-            if other.topside:
-                self.move(other, board, board.top)
-        else:
-            self.move(other, board)
-
+        if other.topside:
+            self.move(other, board, board.top)
 
 ### Top level
 
@@ -374,7 +347,6 @@ class Gate(GameObject):
 class RockSpawner(GameObject):
     def __init__(self, position, target):
         super().__init__(position)
-        self.repr = "+"
         self.target = target
 
     def collide_with_player(self, other, board):

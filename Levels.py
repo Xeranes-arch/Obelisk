@@ -1,8 +1,9 @@
 from Board import Board
 from GameObjects import *
 import pygame
+
 if TYPE_CHECKING:
-    from Obelisk import Game, Renderer  # only used for type hints
+    from Obelisk import Game  # only used for type hints
 
 LINE = "\n_________________________\n"
 CON = "press enter to continiue"
@@ -16,6 +17,8 @@ GROUND_OBJECTS = [Pit, Ice, Teleporter, Switch, Win]
 MIDDLE_OBJECTS = [Player, Rock, Wall, Gate]
 TOP_OBJECTS = []
 
+DELAY = 0.1
+
 
 class Level:
     def __init__(self):
@@ -27,7 +30,6 @@ class Level:
             "wall_kick": False,
         }
         self.transform_dict = {}
-        self.win_msg = "\nDONE!!!\n"
 
     def __repr__(self):
         return self.__class__.__name__
@@ -41,26 +43,124 @@ class Level:
             list.append(lst)
         return list
 
-        return []
+    def riddle(self, game, riddles, solutions, rebuttals = None):
+        
+        if not rebuttals:
+            rebuttals = [(
+                            "No! WRONG! INCORRECT!!!"
+                            + LINE
+                            + "A laser completely incinerates Aelira and Baelric!"
+                            + LINE
+                            + RE
+                        ) for _ in riddles]
+            
+        pygame.event.clear()
+        answers = ["a", "b"]
+        nr_of_riddles = len(riddles)
+        nr_solved = 0
+        exit_flag = False
+        for riddle_text, sol, rebuttal in zip(riddles, solutions, rebuttals):
+            tries = 0
+            solved = False
+            next_riddle = False
+            text = riddle_text
+            showing_msg = False
 
-    def on_enter(self,game):
+            while True:
+
+                if next_riddle:
+                    break
+                
+                for event in pygame.event.get():
+
+                    # Window closed
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        exit()
+
+                    if event.type == pygame.KEYDOWN:
+                        try:
+                            # Esc - to quit to main menu
+                            if event.key == 27:
+                                return False
+                            
+                            
+                            # Enter pressed
+                            if event.key == 13:
+
+                                # Reset Text to riddle
+                                text = riddle_text
+                                showing_msg = False
+
+                                # All riddles solved
+                                if exit_flag:
+                                    print("returning true")
+                                    return True
+                                
+                                # break while True; skip to next riddle
+                                if solved:
+                                    next_riddle = True
+                                    break
+
+                                
+                            
+                            # Skip rest if solved flag
+                            if showing_msg:
+                                continue
+
+                            correct_answer = False
+                            # If sol is set to 2 in the level: only pass after three valid tries
+                            if chr(event.key) in answers and sol == 2:
+                                tries += 1
+                                if tries == 3:
+                                    correct_answer = True
+                            # Correct answer # answers[2] would throw idx error if not in elif
+                            elif chr(event.key) == answers[sol]:
+                                correct_answer = True
+                            
+                            if correct_answer:
+                                nr_solved += 1
+                                text = "Correct!" + LINE + CON
+                                showing_msg = True
+                                solved = True
+
+                                # Final riddle done
+                                if nr_solved == nr_of_riddles:
+                                    text = "Correct!" + LINE + "LEVEL CLEAR" + LINE + CON
+                                    exit_flag = True
+                                    print("EXit flag set")
+                                    break
+
+                            # Wrong answer
+                            if chr(event.key) == answers[(sol+1)%2] and not showing_msg:
+                                text = rebuttal
+                                showing_msg = True
+                         
+                        except:
+                            continue
+
+                    game.renderer.draw_board(game.board)
+                    game.renderer.dim()
+                    game.renderer.draw_text(text)
+                    game.renderer.displaying_message = True
+
+                    pygame.display.flip()
+                    game.renderer.clock.tick(game.renderer.fps)
+                
+                time.sleep(DELAY)
+                    
+                    
+    def on_enter(self, game):
         """Show dialogue or perform actions when the level starts."""
         pass
 
-    def transform(self, new_flags):
+    def transform(self):
         """Transform level to different powerups/objects."""
         pass
 
-    def end(self):
-        pass
+    def end(self, game):
+        return True
 
-    def laser(self):
-        print(LINE, "\nA laser completely incinerates Aelira and Baelric!" + LINE)
-        self.enter()
-
-    def enter(self):
-        print(LINE)
-        input("press enter to continue")
 
 
 class Level0(Level):
@@ -69,7 +169,7 @@ class Level0(Level):
     def __init__(self):
         super().__init__()
 
-    def on_enter(self,game):
+    def on_enter(self):
         """Run start up sequence/dialgue."""
         print(LINE, "\nCongratz. You've found the bug checking site!" + LINE)
 
@@ -103,7 +203,7 @@ class Level0(Level):
 
         # Tops
         tops = []
-        # TODO put in boaord init
+
         elements = [tiles, middles, tops]
         self.board = Board(self.flags, width, hight, elements)
 
@@ -112,6 +212,9 @@ class Level0(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
 
@@ -119,20 +222,24 @@ class Level1(Level):
     def __init__(self):
         super().__init__()
 
-    def on_enter(self,game: "Game"):
+    def on_enter(
+        self,
+        game: "Game",
+    ):
         # Game intro
         text = (
             LINE
             + "\nAelira and Baelric on the run from the Obelisk, step through the stone archway covered by darkness and find themselves in an empty square stone room. The archway slams shut behind them!\nTheir companions are still fighting the Obelisk so the Heroes better hurry to figure out how to disable it!"
             + LINE
+            + "Aelira - wasd, Baelric - ijkl"
+            + LINE
             + CON
         )
+        game.renderer.draw_board(game.board)
+        game.renderer.dim()
         game.renderer.draw_text(text)
 
-
-
-        # fake_event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN)
-        # pygame.event.post(fake_event)
+        pygame.display.flip()
 
     def setup_board(self):
         width, hight = 8, 8
@@ -143,7 +250,7 @@ class Level1(Level):
         ice_list = []
         teleporter_list = []
         switch_list = []
-        win_list = [(6, 1), (6, 6)]
+        win_list = [(5, 2), (5, 5)]
 
         wall_list = [
             (i, j) for i in range(8) for j in range(8) if i in [0, 7] or j in [0, 7]
@@ -174,36 +281,46 @@ class Level1(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
-    def end(self):
+    def end(self, game):
         # Riddle 1
-        i = 0
-        lst = ["", "*correctly*"]
-        while True:
-            print(
-                LINE,
-                f"\nBefore they proceed, Aelira and Baelric must {lst[i]} answer a riddle.\nWhat should every Hitchhiker be sure to bring?\na - A towel\nb - A beloved friend",
-                LINE,
-            )
-            if input() == "a":
-                print("Correct!" + LINE)
-                break
-            else:
-                print("No! WRONG! INCORRECT!!!")
-                self.laser()
-                i = 1
+        pygame.event.clear()
 
+        riddle_text = (
+            LINE
+            + f"\nBefore they proceed, Aelira and Baelric must answer a riddle."
+            + LINE
+            + "What should every Hitchhiker be sure to bring?\na - A towel\nb - A beloved friend"
+            + LINE
+        )
+        res = self.riddle(game,[riddle_text],[0])
+        print("Res", res)
+        return res
 
 class Level2(Level):
     def __init__(self):
         super().__init__()
 
-    def on_enter(self,game):
-        print(
-            "\nSuddenly the room comes alive and completely restructures itself. Some of the ground and all the walls fall away.\nIn place of the Walls appear identical rooms with identical Aeliras and Baelrics.\nWtf"
+    def on_enter(self, game):
+        text = (
+            LINE
+            + "Suddenly the room comes alive and completely restructures itself. Some of the ground and all the walls fall away.\nIn place of the Walls appear identical rooms with identical Aeliras and Baelrics.\nWtf"
+            + LINE
+            + "Increase/Decrease visible radius: up/down"
+            + LINE
+            + CON
         )
-        self.enter()
+
+        game.renderer.draw_board(game.board)
+        game.renderer.dim()
+        game.renderer.draw_text(text)
+        # game.renderer.displaying_message = True
+
+        pygame.display.flip()
 
     def setup_board(self):
         width, hight = 8, 8
@@ -242,22 +359,25 @@ class Level2(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
-    def end(self):
+    def end(self, game):
+
         # Riddle 2
-        while True:
-            print(
-                LINE,
-                "\nBefore they proceed, Aelira and Baelric must\nagain answer a riddle.\nWhat is the objectively superior condiment?\na - Ketchup\nb - Mayonaise",
-                LINE,
-            )
-            if input() == "b":
-                print("Correct!" + LINE)
-                break
-            else:
-                print("No! WRONG! INCORRECT!!!")
-                self.laser()
+        riddle_text = (
+                    LINE
+                    + "\nBefore they proceed, Aelira and Baelric must again answer a riddle."
+                    + LINE
+                    + "What is the objectively superior condiment?\na - Ketchup\nb - Mayonaise"
+                    + LINE
+                )
+        riddles = [riddle_text]
+        solutions = [1]
+        res = self.riddle(game, riddles, solutions)
+        return res
 
 
 class Level3(Level):
@@ -266,9 +386,14 @@ class Level3(Level):
     def __init__(self):
         super().__init__()
 
-    def on_enter(self,game, board=None):
-        print("\nParts of the ground freeze over and next to Aelira a Switch appears.")
-        self.enter()
+    def on_enter(self, game, board=None):
+        text = "\nParts of the ground freeze over and next to Aelira a Switch appears." + LINE + CON
+
+        game.renderer.draw_board(game.board)
+        game.renderer.dim()
+        game.renderer.draw_text(text)
+
+        pygame.display.flip()
 
     def setup_board(self):
         width, hight = 8, 8
@@ -316,24 +441,20 @@ class Level3(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
-    def end(self):
+    def end(self, game):
         # Riddle 3
-        while True:
-            print(
-                LINE,
-                "\nBefore they proceed, Aelira and Baelric must\nagain answer a riddle.\nDoes pineapple belong on Pizza?\na - Yes\nb - No",
-                LINE,
-            )
-            if input() == "a":
-                print("Correct!" + LINE)
-                break
-            else:
-                print(
-                    "Only those weak of mind close themselves off from greatness.\nHarharhar!"
-                )
-                self.laser()
+        riddle_text =LINE + "\nBefore they proceed, Aelira and Baelric must again answer a riddle." + LINE + "Does pineapple belong on Pizza?\na - Yes\nb - No"
+        riddles = [riddle_text]
+        solutions = [0]
+        rebuttals = ["Only those weak of mind close themselves off from greatness.\nHarharhar!" + LINE + CON]
+
+        res = self.riddle(game,riddles,solutions,rebuttals)
+        return res
 
 
 class Level4(Level):
@@ -385,27 +506,31 @@ class Level4(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
-    def end(self):
+    def end(self, game):
         # Riddle 4
+        riddles = []
         for i in ["cereal", "a smoothy", "a salad", "everything"]:
             if i == "everything":
                 j = "bucket"
             else:
                 j = "soup"
-            while True:
-                print(
-                    LINE,
-                    f"\nBefore they proceed, Aelira and Baelric must\nagain answer a riddle.\nIs {i} a {j}?\na - Yes\nb - No",
-                    LINE,
-                )
-                if input() == "a":
-                    print("Correct!" + LINE)
-                    break
-                else:
-                    print("Soup is a scam...")
-                    self.laser()
+            
+            riddle =                LINE +                f"\nBefore they proceed, Aelira and Baelric must again answer a riddle.\nIs {i} a {j}?\na - Yes\nb - No" +                LINE
+            riddles.append(riddle)
+            
+        rebuttals = ["Remember. Soup is not a valid meal. It's a scam..." + LINE + CON for _ in range(3)]
+        rebuttals.append("Stanley... I... I thought it was over. Are we still asking this question? Please. Be done with it.")
+
+        solutions = [0,0,0,0]
+
+        res = self.riddle(game, riddles, solutions, rebuttals)
+        return res
+                   
 
 
 class Level5(Level):
@@ -449,23 +574,21 @@ class Level5(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
-    def end(self):
+    def end(self,game):
         # Riddle 5
-        i = 0
-        print(LINE, "\nBefre the prosed, Aevnoa and Baelric must\nagin b rid.")
-        while True:
-            print(
-                "Why oövicah sa jk HREeAAN?\n----.---\nbael##+Ǵ",
-                LINE,
-            )
-            input()
-            if i == 1:
-                break
-            else:
-                print("The Obe#### i# ### ##er")
-                i += 1
+        
+        riddles = ["Why oövicah sa jk HREeAAN?\n----.---\nbael##+Ǵ"]
+        solutions = [2]
+        rebuttals = ["The Obe#### i# ### ##er"]
+
+        res = self.riddle(game,riddles,solutions,rebuttals)
+        return res
+        
 
 
 class Level6(Level):
@@ -654,6 +777,9 @@ class Level7(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
 
 
@@ -706,7 +832,11 @@ class Level8(Level):
             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
             self.board.set_element(self.board.middle, pos, P)
             self.board.players.append(P)
+
+        win_msg = "\nDONE!!!\n" + LINE + CON
+        self.board.win_msg = win_msg
         return self.board
+
 
         # class Levelo6_the_way_we_played_at_party(Level):
         #     def __init__(self, flags):
@@ -798,7 +928,7 @@ class Level8(Level):
         #         ]
         #         tops = []
 
-        elements = [tiles, middles, tops]
+        # elements = [tiles, middles, tops]
         #         self.board = Board(self.flags, width, hight, elements)
         #         for i, pos in enumerate(self.start_pos):
         #             P = Player(pos, PLAYER_NAMES[i], PLAYER_REPRESENTATIONS[i])
@@ -847,7 +977,7 @@ class Level8(Level):
         #         ]
         #         tops = []
 
-        elements = [tiles, middles, tops]
+        # elements = [tiles, middles, tops]
 
 
 #         self.board = Board(self.flags, width, hight, elements)
